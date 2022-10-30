@@ -2,3 +2,11 @@ div.katex-container {
   display: inline-block;
   padding: 0 1em;
 }
+
+div.sequent-line {
+  width: max-content;
+}
+
+div.separator {
+  border-bottom: 1px solid black;
+}

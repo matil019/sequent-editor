@@ -1,10 +1,8 @@
 import katex from 'katex';
 
-const s1a = "\\Gamma \\vdash A";
-const s1b = "\\Delta, A \\vdash C";
-const s2  = "\\Gamma, \\Delta \\vdash C";
+type Sequent = { expr: string, upper: Sequent[] }
 
-function putKatex(expr: string, dst: HTMLElement): HTMLDivElement {
+function makeKatexDiv(expr: string): HTMLDivElement {
   const div = document.createElement("div");
   katex.render(expr, div, {
     throwOnError: false,
@@ -17,13 +15,42 @@ function putKatex(expr: string, dst: HTMLElement): HTMLDivElement {
     },
   });
   div.className = "katex-container";
-  dst.appendChild(div);
   return div;
 }
 
-const div1a = putKatex(s1a, document.getElementById("s1")!);
-const div1b = putKatex(s1b, document.getElementById("s1")!);
-const div2  = putKatex(s2,  document.getElementById("s2")!);
+function renderSequent(s: Sequent, dst: HTMLElement) {
+  if (s.upper.length > 0) {
+    const containerUpper = document.createElement("div");
+    containerUpper.className = "sequent-line";
+    s.upper.map(u => renderSequent(u, containerUpper));
 
-const sep = document.getElementById("sep")!;
-sep.style.width = Math.max(div1a.getBoundingClientRect().width + div1b.getBoundingClientRect().width, div2.getBoundingClientRect().width).toString() + "px";
+    const containerLower = document.createElement("div");
+    containerLower.className = "sequent-line";
+    const div = makeKatexDiv(s.expr);
+    containerLower.appendChild(div);
+
+    const separator = document.createElement("div");
+    separator.className = "separator";
+
+    dst.appendChild(containerUpper);
+    dst.appendChild(separator);
+    dst.appendChild(containerLower);
+
+    // bounding rects are calculated after appending
+    separator.style.width = Math.max(containerUpper.getBoundingClientRect().width, containerLower.getBoundingClientRect().width).toString() + "px";
+  } else {
+    const div = makeKatexDiv(s.expr);
+    dst.appendChild(div);
+  }
+}
+
+renderSequent(
+  {
+    upper: [
+      { upper: [], expr: "\\Gamma \\vdash A" },
+      { upper: [], expr: "\\Delta, A \\vdash C" },
+    ],
+    expr: "\\Gamma, \\Delta \\vdash C",
+  },
+  document.body
+);
