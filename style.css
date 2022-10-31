@@ -1,10 +1,11 @@
 div.katex-container {
   display: inline-block;
-  padding: 0 1em;
 }
 
-div.sequent-line {
-  width: max-content;
+div.sequent-lines {
+  display: inline-block;
+  text-align: center;
+  margin: 0 1em;
 }
 
 div.separator {

@@ -18,39 +18,55 @@ function makeKatexDiv(expr: string): HTMLDivElement {
   return div;
 }
 
-function renderSequent(s: Sequent, dst: HTMLElement) {
+function renderSequent(s: Sequent) {
   if (s.upper.length > 0) {
     const containerUpper = document.createElement("div");
-    containerUpper.className = "sequent-line";
-    s.upper.map(u => renderSequent(u, containerUpper));
-
-    const containerLower = document.createElement("div");
-    containerLower.className = "sequent-line";
-    const div = makeKatexDiv(s.expr);
-    containerLower.appendChild(div);
+    containerUpper.className = "sequent-lines";
+    s.upper.map(u => renderSequent(u))
+      .forEach(d => containerUpper.appendChild(d));
 
     const separator = document.createElement("div");
     separator.className = "separator";
 
-    dst.appendChild(containerUpper);
-    dst.appendChild(separator);
-    dst.appendChild(containerLower);
+    const sequentLower = makeKatexDiv(s.expr);
 
-    // bounding rects are calculated after appending
-    separator.style.width = Math.max(containerUpper.getBoundingClientRect().width, containerLower.getBoundingClientRect().width).toString() + "px";
+    const containerWhole = document.createElement("div");
+    containerWhole.className = "sequent-lines";
+    containerWhole.appendChild(containerUpper);
+    containerWhole.appendChild(separator);
+    containerWhole.appendChild(sequentLower);
+
+    return containerWhole;
   } else {
-    const div = makeKatexDiv(s.expr);
-    dst.appendChild(div);
+    return makeKatexDiv(s.expr);
   }
 }
 
-renderSequent(
+const x = renderSequent(
   {
     upper: [
-      { upper: [], expr: "\\Gamma \\vdash A" },
-      { upper: [], expr: "\\Delta, A \\vdash C" },
+      {
+        upper: [
+          {
+            upper: [
+              {
+                upper: [
+                  { upper: [], expr: "\\neg (A \\lor \\neg A) \\vdash \\neg A" },
+                ],
+                expr: "\\neg (A \\lor \\neg A) \\vdash A \\lor \\neg A"
+              },
+              {
+                upper: [{ upper: [], expr: "" }],
+                expr: "\\bot \\vdash \\bot"
+              },
+            ],
+            expr: "\\neg (A \\lor \\neg A), \\neg (A \\lor \\neg A) \\vdash \\bot"
+          }
+        ],
+        expr: "\\neg (A \\lor \\neg A) \\vdash \\bot"
+      },
     ],
-    expr: "\\Gamma, \\Delta \\vdash C",
+    expr: "\\vdash \\neg \\neg (A \\lor \\neg A)",
   },
-  document.body
 );
+document.body.appendChild(x);
