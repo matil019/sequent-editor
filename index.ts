@@ -1,19 +1,22 @@
 import katex from 'katex';
+import { KatexOptions } from 'katex';
 
 type Sequent = { expr: string, upper: Sequent[] }
 
+const theKatexOptions: KatexOptions = {
+  throwOnError: false,
+  trust: (context) => context.command === '\\htmlId',
+  strict: (errorCode: string) => {
+    if (errorCode === "htmlExtension")
+      return "ignore";
+    else
+      return "warn";
+  },
+};
+
 function makeKatexDiv(expr: string): HTMLDivElement {
   const div = document.createElement("div");
-  katex.render(expr, div, {
-    throwOnError: false,
-    trust: (context) => context.command === '\\htmlId',
-    strict: (errorCode: string) => {
-      if (errorCode === "htmlExtension")
-        return "ignore";
-      else
-        return "warn";
-    },
-  });
+  katex.render(expr, div, theKatexOptions);
   div.className = "katex-container";
   return div;
 }
@@ -70,3 +73,24 @@ const x = renderSequent(
   },
 );
 document.body.appendChild(x);
+
+{
+  const buttonsDiv = document.createElement("div");
+  const buttonExprs = [
+    "A", "B", "C", "D", "\\Gamma", "\\Delta", "\\Sigma", "\\Pi",
+    "\\vdash", "(", ")",
+    "\\land", "\\lor", "\\to", "\\neg", "\\bot",
+    "\\forall", "\\exists",
+  ];
+  for (const expr of buttonExprs) {
+    const button = document.createElement("button");
+    katex.render(expr, button, theKatexOptions);
+    buttonsDiv.appendChild(button);
+  }
+  {
+    const button = document.createElement("button");
+    button.innerText = "custom";
+    buttonsDiv.appendChild(button);
+  };
+  document.body.appendChild(buttonsDiv);
+}
