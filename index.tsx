@@ -1,5 +1,8 @@
 import katex from 'katex';
 import { KatexOptions } from 'katex';
+import React from 'react';
+import { useState } from 'react';
+import ReactDOM from 'react-dom/client';
 
 type Sequent = { expr: string, upper: Sequent[] }
 
@@ -90,129 +93,121 @@ function exprsToString(exprs: Expr[]): string {
     .reduce((a, b) => a + b, "");
 }
 
-{
-  let lhs: Expr[] = [];
-  let rhs: Expr[] = [];
+const buttonSpecs: {label: string, onClick: (es: Expr[]) => Expr[]}[] = [
+  { label: "A", onClick: (es) => (es.concat([{me: "A", precedence: "atom", associative: "none", operands: []}])) },
+  { label: "B", onClick: (es) => (es.concat([{me: "B", precedence: "atom", associative: "none", operands: []}])) },
+  { label: "C", onClick: (es) => (es.concat([{me: "C", precedence: "atom", associative: "none", operands: []}])) },
+  { label: "D", onClick: (es) => (es.concat([{me: "D", precedence: "atom", associative: "none", operands: []}])) },
+  { label: "\\Gamma", onClick: (es) => (es.concat([{me: "\\Gamma", precedence: "atom", associative: "none", operands: []}])) },
+  { label: "\\Delta", onClick: (es) => (es.concat([{me: "\\Delta", precedence: "atom", associative: "none", operands: []}])) },
+  { label: "\\Sigma", onClick: (es) => (es.concat([{me: "\\Sigma", precedence: "atom", associative: "none", operands: []}])) },
+  { label: "\\Pi", onClick: (es) => (es.concat([{me: "\\Pi", precedence: "atom", associative: "none", operands: []}])) },
+  { label: "\\land", onClick: (es) => {
+    const [e1, e2] = es.slice(-2);
+    if (e1 && e2) {
+      return es.slice(0, -2).concat([{me: "\\land", precedence: 3, associative: "none", operands: [e1, e2]}]);
+    } else {
+      return es;
+    }
+  }},
+  { label: "\\lor", onClick: (es) => {
+    const [e1, e2] = es.slice(-2);
+    if (e1 && e2) {
+      return es.slice(0, -2).concat([{me: "\\lor", precedence: 2, associative: "none", operands: [e1, e2]}]);
+    } else {
+      return es;
+    }
+  }},
+  { label: "\\to", onClick: (es) => {
+    const [e1, e2] = es.slice(-2);
+    if (e1 && e2) {
+      return es.slice(0, -2).concat([{me: "\\to", precedence: 1, associative: "right", operands: [e1, e2]}]);
+    } else {
+      return es;
+    }
+  }},
+  { label: "\\neg", onClick: (es) => {
+    const [e1] = es.slice(-1);
+    if (e1) {
+      return es.slice(0, -1).concat([{me: "\\neg", precedence: 9, associative: "right", operands: [e1]}]);
+    } else {
+      return es;
+    }
+  }},
+  { label: "\\bot", onClick: (es) => (es.concat([{me: "\\bot", precedence: "atom", associative: "none", operands: []}])) },
+];
 
-  let focused: "lhs" | "rhs" | null = null;
+const App = () => {
+  const [lhs, setLhs] = useState([] as Expr[]);
+  const [rhs, setRhs] = useState([] as Expr[]);
+  const [focused, setFocused] = useState(null as "lhs" | "rhs" | null);
 
-  const getFocusedExprs = () => {
+  const [focusedExprs, setFocusedExprs] = (() => {
     if (focused === "lhs")
-      return lhs;
+      return [lhs, setLhs];
     else if (focused === "rhs")
-      return rhs;
+      return [rhs, setRhs];
     else
-      return null;
-  };
+      return [null, null];
+  })();
 
-  const sequentDisplay = document.createElement("div");
-  document.body.appendChild(sequentDisplay);
-  const lhsDisplay = document.createElement("span");
-  lhsDisplay.id = "lhs";
-  lhsDisplay.className = "input";
-  lhsDisplay.tabIndex = 0;
-  lhsDisplay.addEventListener("focus", () => { focused = "lhs"; });
-  sequentDisplay.appendChild(lhsDisplay);
-  sequentDisplay.appendChild((() => {
-    const span = document.createElement("span");
-    katex.render("\\; \\vdash \\;", span, theKatexOptions);
-    return span;
-  })());
-  const rhsDisplay = document.createElement("span");
-  rhsDisplay.id = "rhs";
-  rhsDisplay.className = "input";
-  rhsDisplay.tabIndex = 0;
-  rhsDisplay.addEventListener("focus", () => { focused = "rhs"; });
-  sequentDisplay.appendChild(rhsDisplay);
+  const sequentDisplay = (
+    <div>
+      <span
+        id="lhs"
+        className="input"
+        tabIndex={0}
+        onFocus={() => { setFocused("lhs"); }}
+        ref={me => { me && katex.render(exprsToString(lhs), me, theKatexOptions) }}
+        >
+      </span>
+      <span ref={me => { me && katex.render("\\; \\vdash \\;", me, theKatexOptions); }}>
+      </span>
+      <span
+        id="rhs"
+        className="input"
+        tabIndex={0}
+        onFocus={() => { setFocused("rhs"); }}
+        ref={me => { me && katex.render(exprsToString(rhs), me, theKatexOptions) }}
+        >
+      </span>
+    </div>
+  );
 
-  const doRender = () => {
-    katex.render(exprsToString(lhs), lhsDisplay, theKatexOptions);
-    katex.render(exprsToString(rhs), rhsDisplay, theKatexOptions);
-  };
-
-  const buttonsDiv = document.createElement("div");
-
-  const buttonSpecs: {label: string, onClick: (es: Expr[]) => void}[] = [
-    { label: "A", onClick: (es) => { es.push({me: "A", precedence: "atom", associative: "none", operands: []}); } },
-    { label: "B", onClick: (es) => { es.push({me: "B", precedence: "atom", associative: "none", operands: []}); } },
-    { label: "C", onClick: (es) => { es.push({me: "C", precedence: "atom", associative: "none", operands: []}); } },
-    { label: "D", onClick: (es) => { es.push({me: "D", precedence: "atom", associative: "none", operands: []}); } },
-    { label: "\\Gamma", onClick: (es) => { es.push({me: "\\Gamma", precedence: "atom", associative: "none", operands: []}); } },
-    { label: "\\Delta", onClick: (es) => { es.push({me: "\\Delta", precedence: "atom", associative: "none", operands: []}); } },
-    { label: "\\Sigma", onClick: (es) => { es.push({me: "\\Sigma", precedence: "atom", associative: "none", operands: []}); } },
-    { label: "\\Pi", onClick: (es) => { es.push({me: "\\Pi", precedence: "atom", associative: "none", operands: []}); } },
-    { label: "\\land", onClick: (es) => {
-      const e2 = es.pop();
-      if (e2) {
-        const e1 = es.pop();
-        if (e1) {
-          es.push({me: "\\land", precedence: 3, associative: "none", operands: [e1, e2]});
-        } else {
-          es.push(e2);
-        }
-      }
-    }},
-    { label: "\\lor", onClick: (es) => {
-      const e2 = es.pop();
-      if (e2) {
-        const e1 = es.pop();
-        if (e1) {
-          es.push({me: "\\lor", precedence: 2, associative: "none", operands: [e1, e2]});
-        } else {
-          es.push(e2);
-        }
-      }
-    }},
-    { label: "\\to", onClick: (es) => {
-      const e2 = es.pop();
-      if (e2) {
-        const e1 = es.pop();
-        if (e1) {
-          es.push({me: "\\to", precedence: 1, associative: "right", operands: [e1, e2]});
-        } else {
-          es.push(e2);
-        }
-      }
-    }},
-    { label: "\\neg", onClick: (es) => {
-      const e1 = es.pop();
-      if (e1) {
-        es.push({me: "\\neg", precedence: 9, associative: "right", operands: [e1]});
-      }
-    }},
-    { label: "\\bot", onClick: (es) => { es.push({me: "\\bot", precedence: "atom", associative: "none", operands: []}); } },
-  ];
-
-  for (const buttonSpec of buttonSpecs) {
-    const button = document.createElement("button");
-    katex.render(buttonSpec.label, button, theKatexOptions);
-    button.addEventListener("click", () => {
-      const exprs = getFocusedExprs();
-      if (exprs) {
-        buttonSpec.onClick(exprs);
-        doRender();
-        }
-    });
-    buttonsDiv.appendChild(button);
-  }
-
-  {
-    const button = document.createElement("button");
-    button.textContent = "undo";
-    button.addEventListener("click", () => {
-      const exprs = getFocusedExprs();
-      if (exprs) {
-        const e = exprs.pop();
-        if (e) {
-          for (const op of e.operands) {
-            exprs.push(op);
+  const buttons = (
+    <div>
+      {buttonSpecs.map(buttonSpec => (
+        <button
+          ref={me => { me && katex.render(buttonSpec.label, me, theKatexOptions); }}
+          onClick={() => {
+            const exprs = focusedExprs;
+            if (exprs) {
+              setFocusedExprs!(buttonSpec.onClick(exprs));
+            }
+          }}
+          >
+        </button>
+      ))}
+      <button onClick={() => {
+        const exprs = focusedExprs;
+        if (exprs) {
+          const [e] = exprs.slice(-1);
+          if (e) {
+            setFocusedExprs!(exprs.slice(0, -1).concat(e.operands));
           }
         }
-        doRender();
-      }
-    });
-    buttonsDiv.appendChild(button);
-  }
+      }}>
+        undo
+      </button>
+    </div>
+  );
 
-  document.body.appendChild(buttonsDiv);
-}
+  return (
+    <>
+      {sequentDisplay}
+      {buttons}
+    </>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')!).render(<App />);
