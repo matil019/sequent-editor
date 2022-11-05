@@ -90,22 +90,44 @@ function exprsToString(exprs: Expr[]): string {
     .reduce((a, b) => a + b, "");
 }
 
-function exprsPairToString(lhs: Expr[], rhs: Expr[]): string {
-  const slhs = exprsToString(lhs);
-  const srhs = exprsToString(rhs);
-  return slhs + " \\vdash " + srhs;
-}
-
 {
   let lhs: Expr[] = [];
   let rhs: Expr[] = [];
 
-  const editDisplay = document.createElement("div");
-  document.body.appendChild(editDisplay);
+  let focused: "lhs" | "rhs" | null = null;
+
+  const getFocusedExprs = () => {
+    if (focused === "lhs")
+      return lhs;
+    else if (focused === "rhs")
+      return rhs;
+    else
+      return null;
+  };
+
+  const sequentDisplay = document.createElement("div");
+  document.body.appendChild(sequentDisplay);
+  const lhsDisplay = document.createElement("span");
+  lhsDisplay.id = "lhs";
+  lhsDisplay.className = "input";
+  lhsDisplay.tabIndex = 0;
+  lhsDisplay.addEventListener("focus", () => { focused = "lhs"; });
+  sequentDisplay.appendChild(lhsDisplay);
+  sequentDisplay.appendChild((() => {
+    const span = document.createElement("span");
+    katex.render("\\; \\vdash \\;", span, theKatexOptions);
+    return span;
+  })());
+  const rhsDisplay = document.createElement("span");
+  rhsDisplay.id = "rhs";
+  rhsDisplay.className = "input";
+  rhsDisplay.tabIndex = 0;
+  rhsDisplay.addEventListener("focus", () => { focused = "rhs"; });
+  sequentDisplay.appendChild(rhsDisplay);
 
   const doRender = () => {
-    const s = exprsPairToString(lhs, rhs);
-    katex.render(s, editDisplay, theKatexOptions);
+    katex.render(exprsToString(lhs), lhsDisplay, theKatexOptions);
+    katex.render(exprsToString(rhs), rhsDisplay, theKatexOptions);
   };
 
   const buttonsDiv = document.createElement("div");
@@ -165,8 +187,11 @@ function exprsPairToString(lhs: Expr[], rhs: Expr[]): string {
     const button = document.createElement("button");
     katex.render(buttonSpec.label, button, theKatexOptions);
     button.addEventListener("click", () => {
-      buttonSpec.onClick(lhs);
-      doRender();
+      const exprs = getFocusedExprs();
+      if (exprs) {
+        buttonSpec.onClick(exprs);
+        doRender();
+        }
     });
     buttonsDiv.appendChild(button);
   }
@@ -175,13 +200,16 @@ function exprsPairToString(lhs: Expr[], rhs: Expr[]): string {
     const button = document.createElement("button");
     button.textContent = "undo";
     button.addEventListener("click", () => {
-      const e = lhs.pop();
-      if (e) {
-        for (const op of e.operands) {
-          lhs.push(op);
+      const exprs = getFocusedExprs();
+      if (exprs) {
+        const e = exprs.pop();
+        if (e) {
+          for (const op of e.operands) {
+            exprs.push(op);
+          }
         }
+        doRender();
       }
-      doRender();
     });
     buttonsDiv.appendChild(button);
   }

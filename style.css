@@ -11,3 +11,14 @@ div.sequent-lines {
 div.separator {
   border-bottom: 1px solid black;
 }
+
+span.input {
+  min-width: 1em;
+  min-height: 1em;
+  display: inline-block;
+  border: 1px dotted black;
+}
+
+span.input:focus {
+  border: 1px solid black;
+}
