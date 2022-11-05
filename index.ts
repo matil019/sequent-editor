@@ -171,5 +171,20 @@ function exprsPairToString(lhs: Expr[], rhs: Expr[]): string {
     buttonsDiv.appendChild(button);
   }
 
+  {
+    const button = document.createElement("button");
+    button.textContent = "undo";
+    button.addEventListener("click", () => {
+      const e = lhs.pop();
+      if (e) {
+        for (const op of e.operands) {
+          lhs.push(op);
+        }
+      }
+      doRender();
+    });
+    buttonsDiv.appendChild(button);
+  }
+
   document.body.appendChild(buttonsDiv);
 }
