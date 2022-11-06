@@ -54,6 +54,10 @@ export type SequentInferProps = {
   setTree: (tree: ReductionTree) => void,
 }
 
+function patchArray<A>(arr: A[], start: number, newElems: A[], numReplace: number): A[] {
+  return arr.slice(0, start).concat(newElems).concat(arr.slice(start + numReplace));
+}
+
 export const SequentInfer = (props: SequentInferProps) => {
   const {tree, setTree} = props;
   const id = useId();
@@ -74,7 +78,16 @@ export const SequentInfer = (props: SequentInferProps) => {
           // Add an upper sequent, instead of modifying this sequent
           setTree(replaceSubtree({
             ...subtree,
-            upper: [replaceExprs(exprs.slice(0, index).concat(expr.operands).concat(exprs.slice(index + 1)))],
+            upper: [replaceExprs(patchArray(exprs, index, expr.operands, 1))],
+          }));
+        } else if (expr.me === "\\lor") {
+          // ∨L
+          setTree(replaceSubtree({
+            ...subtree,
+            upper: [
+              replaceExprs(patchArray(exprs, index, [expr.operands[0]], 1)),
+              replaceExprs(patchArray(exprs, index, [expr.operands[1]], 1)),
+            ],
           }));
         } else {
           throw `Unknown expr: ${expr.me}`;
