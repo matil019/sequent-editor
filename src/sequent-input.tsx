@@ -6,11 +6,8 @@ import { Expr, ReductionTree, exprToString, theKatexOptions } from './common';
 
 function exprsToString(exprs: Expr[]): string {
   return exprs
-    .map((expr, i) => {
-      const s = exprToString(expr);
-      return (i === 0) ? s : ", " + s;
-    })
-    .reduce((a, b) => a + b, "");
+    .map(expr => exprToString(expr))
+    .reduce((acc, s) => acc + ", " + s);
 }
 
 const buttonSpecs: {label: string, onClick: (es: Expr[]) => Expr[]}[] = [
@@ -60,6 +57,11 @@ const buttonSpecs: {label: string, onClick: (es: Expr[]) => Expr[]}[] = [
 // `indexes == []` means the root node (sequent) is focused
 type TreeFocus = {indexes: number[], side: "lhs" | "rhs"}
 
+// An applied lens that points to nothing
+function emptyAppliedLens(tree: ReductionTree): [Expr[] | null, (es: Expr[]) => ReductionTree] {
+  return [null, (_: Expr[]) => tree];
+}
+
 function appliedLensOf(
   tree: ReductionTree,
   focus: TreeFocus,
@@ -75,8 +77,7 @@ function appliedLensOf(
       });
       return [getter, setter];
     } else {
-      // a lens that points to nothing
-      return [null, (_) => tree];
+      return emptyAppliedLens(tree);
     }
   } else {
     if (focus.side === "lhs") {
@@ -90,6 +91,10 @@ function appliedLensOf(
   }
 }
 
+function eqNumbers(xs: number[], ys: number[]): boolean {
+  return xs.length == ys.length && xs.every((x, i) => x == ys[i]);
+}
+
 export type SequentInputProps = {
   lhs: Expr[],
   setLhs: (es: Expr[]) => void,
@@ -97,38 +102,59 @@ export type SequentInputProps = {
   setRhs: (es: Expr[]) => void,
 }
 
-export const SequentInput = (props: SequentInputProps) => {
-  const {lhs, setLhs, rhs, setRhs} = props;
-  const [focused, setFocused] = useState(null as "lhs" | "rhs" | null);
+export const SequentInput = (_props: SequentInputProps) => {
+  // const {lhs, setLhs, rhs, setRhs} = props;
+  // TODO use props instead of state
+  const [tree, setTree] = useState({sequent: {lhs: [], rhs: []}, upper: []} as ReductionTree);
+  const [focus, setFocus] = useState(null as TreeFocus | null);
 
-  const [focusedExprs, setFocusedExprs] = (() => {
-    if (focused === "lhs")
-      return [lhs, setLhs];
-    else if (focused === "rhs")
-      return [rhs, setRhs];
-    else
-      return [null, () => {}];
-  })();
+  const [focusedExprs, modifyFocusedExprs] = focus ? appliedLensOf(tree, focus) : emptyAppliedLens(tree);
 
-  const sequentDisplay = (
-    <div>
-      <span
-        id="lhs"
-        className={"input" + (focused === "lhs" ? " focused" : "")}
-        tabIndex={0}
-        onFocus={() => { setFocused("lhs"); }}
-        ref={me => { me && katex.render(lhs.length > 0 ? exprsToString(lhs) : "\\quad", me, theKatexOptions); }}
-        />
-      <span ref={me => { me && katex.render("\\; \\vdash \\;", me, theKatexOptions); }} />
-      <span
-        id="rhs"
-        className={"input" + (focused === "rhs" ? " focused" : "")}
-        tabIndex={0}
-        onFocus={() => { setFocused("rhs"); }}
-        ref={me => { me && katex.render(rhs.length > 0 ? exprsToString(rhs) : "\\quad", me, theKatexOptions); }}
-        />
-    </div>
-  );
+  function treeToComponent(subtree: ReductionTree, cursor: number[]) {
+    if (subtree.upper.length > 0) {
+      // TODO rename to .separator to .inference-line
+      return (
+        // TODO <div className="sequent-lines"> instead of <>?
+        <>
+          <div className="sequent-lines">
+            {subtree.upper.map((u, idx) => treeToComponent(u, cursor.concat([idx])))}
+          </div>
+          <div className="separator" />
+          <div className="katex-container" ref={me => {
+            if (me) {
+              const {sequent: {lhs, rhs}} = subtree;
+              const s = exprsToString(lhs) + " \\vdash " + exprsToString(rhs);
+              katex.render(s, me, theKatexOptions);
+            }
+          }} />
+        </>
+      );
+    } else {
+      // only leaf nodes should be able to have focus
+      const katexRender = (es: Expr[], me: HTMLElement) => katex.render(es.length > 0 ? exprsToString(es) : "\\quad", me, theKatexOptions);
+      return (
+        <div className="katex-container">
+          <span
+            id="lhs"
+            className={"input" + ((focus && eqNumbers(focus.indexes, cursor) && focus.side === "lhs") ? " focused" : "")}
+            tabIndex={0}
+            onFocus={() => { setFocus({indexes: cursor, side: "lhs"}); }}
+            ref={me => { me && katexRender(subtree.sequent.lhs, me); }}
+            />
+          <span ref={me => { me && katex.render("\\; \\vdash \\;", me, theKatexOptions); }} />
+          <span
+            id="rhs"
+            className={"input" + ((focus && eqNumbers(focus.indexes, cursor) && focus.side === "rhs") ? " focused" : "")}
+            tabIndex={0}
+            onFocus={() => { setFocus({indexes: cursor, side: "rhs"}); }}
+            ref={me => { me && katexRender(subtree.sequent.rhs, me); }}
+            />
+        </div>
+      );
+    }
+  }
+
+  const sequentDisplay = treeToComponent(tree, []);
 
   const buttons = (
     <div>
@@ -139,7 +165,7 @@ export const SequentInput = (props: SequentInputProps) => {
           onClick={() => {
             const exprs = focusedExprs;
             if (exprs) {
-              setFocusedExprs(buttonSpec.onClick(exprs));
+              setTree(modifyFocusedExprs(buttonSpec.onClick(exprs)));
             }
           }}
           >
@@ -150,7 +176,7 @@ export const SequentInput = (props: SequentInputProps) => {
         if (exprs) {
           const [e] = exprs.slice(-1);
           if (e) {
-            setFocusedExprs(exprs.slice(0, -1).concat(e.operands));
+            setTree(modifyFocusedExprs(exprs.slice(0, -1).concat(e.operands)));
           }
         }
       }}>
