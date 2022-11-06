@@ -96,15 +96,19 @@ export const SequentInfer = (props: SequentInferProps) => {
     }
   };
 
-  function treeToComponent(subtree: ReductionTree, cursor: number[]) {
+  function treeToComponent(subtree: ReductionTree, cursor: number[]): JSX.Element {
     if (subtree.upper.length > 0) {
       // TODO rename .separator to .inference-line
       return (
-        // TODO <div className="sequent-lines"> instead of <>?
         <>
-          <div className="sequent-lines">
-            {subtree.upper.map((u, idx) => treeToComponent(u, cursor.concat([idx])))}
-          </div>
+          {subtree.upper.map((u, idx) => {
+            const newCursor = cursor.concat([idx]);
+            return (
+              <div className="sequent-lines" key={newCursor.map(i => i.toString()).reduce((acc, s) => acc + "-" + s)}>
+                {treeToComponent(u, newCursor)}
+              </div>
+            );
+          })}
           <div className="separator" />
           <div className="katex-container" ref={me => {
             if (me) {
