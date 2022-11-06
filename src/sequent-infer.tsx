@@ -9,7 +9,7 @@ export type SequentInferProps = {
 
 export const SequentInfer = (props: SequentInferProps) => {
   const {lhs, rhs} = props;
-  const exprsToString = (x: any) => ""; // TODO put id attributes
+  const exprsToString = (_: any) => ""; // TODO put id attributes
   return (
     <div>
       <span ref={me => { me && katex.render(lhs.length > 0 ? exprsToString(lhs) : "\\quad", me, theKatexOptions); }} />

@@ -4,8 +4,8 @@ import { useId, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 
 import { Expr, theKatexOptions } from './common';
-import { SequentInfer, SequentInferProps } from './sequent-infer';
-import { SequentInput, SequentInputProps } from './sequent-input';
+import { SequentInfer } from './sequent-infer';
+import { SequentInput } from './sequent-input';
 
 type Sequent = { expr: string, upper: Sequent[] }
 
@@ -15,6 +15,9 @@ function makeKatexDiv(expr: string): HTMLDivElement {
   div.className = "katex-container";
   return div;
 }
+
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// disable the warning because I intend to use this later
 
 function renderSequent(s: Sequent) {
   if (s.upper.length > 0) {
@@ -39,6 +42,8 @@ function renderSequent(s: Sequent) {
     return makeKatexDiv(s.expr);
   }
 }
+
+/* eslint-enable */
 
 const App = () => {
   const id = useId();

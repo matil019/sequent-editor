@@ -110,7 +110,7 @@ export const SequentInput = (props: SequentInputProps) => {
         className={"input" + (focused === "lhs" ? " focused" : "")}
         tabIndex={0}
         onFocus={() => { setFocused("lhs"); }}
-        ref={me => { me && katex.render(lhs.length > 0 ? exprsToString(lhs) : "\\quad", me, theKatexOptions) }}
+        ref={me => { me && katex.render(lhs.length > 0 ? exprsToString(lhs) : "\\quad", me, theKatexOptions); }}
         />
       <span ref={me => { me && katex.render("\\; \\vdash \\;", me, theKatexOptions); }} />
       <span
@@ -118,7 +118,7 @@ export const SequentInput = (props: SequentInputProps) => {
         className={"input" + (focused === "rhs" ? " focused" : "")}
         tabIndex={0}
         onFocus={() => { setFocused("rhs"); }}
-        ref={me => { me && katex.render(rhs.length > 0 ? exprsToString(rhs) : "\\quad", me, theKatexOptions) }}
+        ref={me => { me && katex.render(rhs.length > 0 ? exprsToString(rhs) : "\\quad", me, theKatexOptions); }}
         />
     </div>
   );
@@ -127,6 +127,7 @@ export const SequentInput = (props: SequentInputProps) => {
     <div>
       {buttonSpecs.map(buttonSpec => (
         <button
+          key={buttonSpec.label}
           ref={me => { me && katex.render(buttonSpec.label, me, theKatexOptions); }}
           onClick={() => {
             const exprs = focusedExprs;
