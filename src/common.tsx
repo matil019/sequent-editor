@@ -92,7 +92,7 @@ export function appliedLensOfSubtree(
   indexes: number[],
 ): AppliedLens<ReductionTree, ReductionTree> {
   const [index] = indexes;
-  if (index) {
+  if (index != null) {
     const up = tree.upper[index];
     if (up) {
       const [getter, subSetter] = appliedLensOfSubtree(up, indexes.slice(1));
