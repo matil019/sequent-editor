@@ -141,7 +141,6 @@ export function appliedLensOf(
 export function treeToComponent(tree: ReductionTree, leafToComponent: (leaf: ReductionTree, indexes: number[]) => JSX.Element): JSX.Element {
   function recurse(subtree: ReductionTree, indexes: number[]): JSX.Element {
     if (subtree.upper.length > 0) {
-      // TODO rename .separator to .inference-line
       return (
         <>
           {subtree.upper.map((u, idx) => {
@@ -152,7 +151,7 @@ export function treeToComponent(tree: ReductionTree, leafToComponent: (leaf: Red
               </div>
             );
           })}
-          <div className="separator" />
+          <div className="inference-line" />
           <div className="katex-container" ref={me => {
             if (me) {
               const {sequent: {lhs, rhs}} = subtree;
