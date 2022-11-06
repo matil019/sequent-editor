@@ -3,8 +3,13 @@ import React from 'react';
 import { useId } from 'react';
 import { Expr, exprToString, theKatexOptions } from './common';
 
-// TODO name
-function foo(target: HTMLElement, exprs: Expr[], idPrefix: string, handleClickWhole: (index: number) => void, handleClickRoot: (index: number) => void): void {
+function renderClickableSequent(
+  target: HTMLElement,
+  exprs: Expr[],
+  idPrefix: string,
+  handleClickWhole: (index: number) => void,
+  handleClickRoot: (index: number) => void,
+): void {
   // "whole" means the whole proposition (i.e. outermost HTML DOM node)
   // "root" means the root node of the Expr tree structure (i.e. outermost Expr node, not DOM)
   const wholeId = (index: number) => `${idPrefix}${index.toString()}whole`;
@@ -57,9 +62,9 @@ export const SequentInfer = (props: SequentInferProps) => {
   const handleRoot = (index: number) => { console.log(index.toString() + " root clicked!"); };
   return (
     <div>
-      <span ref={me => { me && foo(me, lhs, id + "lhs", handleWhole, handleRoot); }} />
+      <span ref={me => { me && renderClickableSequent(me, lhs, id + "lhs", handleWhole, handleRoot); }} />
       <span ref={me => { me && katex.render("\\; \\vdash \\;", me, theKatexOptions); }} />
-      <span ref={me => { me && foo(me, rhs, id + "rhs", handleWhole, handleRoot); }} />
+      <span ref={me => { me && renderClickableSequent(me, rhs, id + "rhs", handleWhole, handleRoot); }} />
     </div>
   );
 };
