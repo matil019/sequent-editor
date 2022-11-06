@@ -5,6 +5,8 @@ import { Expr, exprToString, theKatexOptions } from './common';
 
 // TODO name
 function foo(target: HTMLElement, exprs: Expr[], idPrefix: string, handleClickWhole: (index: number) => void, handleClickRoot: (index: number) => void): void {
+  // "whole" means the whole proposition (i.e. outermost HTML DOM node)
+  // "root" means the root node of the Expr tree structure (i.e. outermost Expr node, not DOM)
   const wholeId = (index: number) => `${idPrefix}${index.toString()}whole`;
   const rootId = (index: number) => `${idPrefix}${index.toString()}root`;
   const katexInput = exprs
@@ -32,7 +34,12 @@ function foo(target: HTMLElement, exprs: Expr[], idPrefix: string, handleClickWh
     }
     const rootElem = document.getElementById(rootId(index));
     if (rootElem) {
-      rootElem.addEventListener("click", () => handleClickRoot(index));
+      rootElem.addEventListener("click", (e) => {
+        // Prevent the whole element from being triggered as well
+        // (AFAIK root is always triggered before whole)
+        e.stopPropagation();
+        handleClickRoot(index);
+      });
     }
   }
 }
