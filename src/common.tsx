@@ -48,9 +48,13 @@ export function exprToString(expr: Expr): string {
 }
 
 export function exprsToString(exprs: Expr[]): string {
-  return exprs
-    .map(expr => exprToString(expr))
-    .reduce((acc, s) => acc + ", " + s);
+  if (exprs.length > 0) {
+    return exprs
+      .map(expr => exprToString(expr))
+      .reduce((acc, s) => acc + ", " + s);
+  } else {
+    return "";
+  }
 }
 
 export type Sequent = {lhs: Expr[], rhs: Expr[]}
