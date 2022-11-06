@@ -155,7 +155,7 @@ const App = () => {
     <div>
       <span
         id="lhs"
-        className="input"
+        className={"input" + (focused === "lhs" ? " focused" : "")}
         tabIndex={0}
         onFocus={() => { setFocused("lhs"); }}
         ref={me => { me && katex.render(lhs.length > 0 ? exprsToString(lhs) : "\\quad", me, theKatexOptions) }}
@@ -165,7 +165,7 @@ const App = () => {
       </span>
       <span
         id="rhs"
-        className="input"
+        className={"input" + (focused === "rhs" ? " focused" : "")}
         tabIndex={0}
         onFocus={() => { setFocused("rhs"); }}
         ref={me => { me && katex.render(rhs.length > 0 ? exprsToString(rhs) : "\\quad", me, theKatexOptions) }}

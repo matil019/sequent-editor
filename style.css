@@ -16,6 +16,6 @@ span.input {
   border: 1px dotted black;
 }
 
-span.input:focus {
+span.input.focused {
   border: 1px solid black;
 }
