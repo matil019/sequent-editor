@@ -1,37 +1,25 @@
 import katex from 'katex';
+import React from 'react';
 
 import { Expr, theKatexOptions } from './common';
 
 // TODO expr -> {lhs: Expr[], rhs: Expr[]}
 export type ReductionTree = { expr: string, upper: ReductionTree[] }
 
-function makeKatexDiv(expr: string): HTMLDivElement {
-  const div = document.createElement("div");
-  katex.render(expr, div, theKatexOptions);
-  div.className = "katex-container";
-  return div;
-}
-
-export function renderReductionTree(tree: ReductionTree) {
+export const ReductionTree = ({tree}: {tree: ReductionTree}) => {
   if (tree.upper.length > 0) {
-    const containerUpper = document.createElement("div");
-    containerUpper.className = "sequent-lines";
-    tree.upper.map(u => renderReductionTree(u))
-      .forEach(d => containerUpper.appendChild(d));
-
-    const separator = document.createElement("div");
-    separator.className = "separator";
-
-    const sequentLower = makeKatexDiv(tree.expr);
-
-    const containerWhole = document.createElement("div");
-    containerWhole.className = "sequent-lines";
-    containerWhole.appendChild(containerUpper);
-    containerWhole.appendChild(separator);
-    containerWhole.appendChild(sequentLower);
-
-    return containerWhole;
+    return (
+      <div className="sequent-lines">
+        <div className="sequent-lines">
+          {tree.upper.map(u => <ReductionTree tree={u} />)}
+        </div>
+        <div className="separator" /> // TODO rename to inference-line
+        <div className="katex-container" ref={me => { me && katex.render(tree.expr, me, theKatexOptions); }} />
+      </div>
+    );
   } else {
-    return makeKatexDiv(tree.expr);
+    return (
+      <div className="katex-container" ref={me => { me && katex.render(tree.expr, me, theKatexOptions); }} />
+    );
   }
-}
+};
