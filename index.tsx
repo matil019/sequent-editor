@@ -158,7 +158,7 @@ const App = () => {
         className="input"
         tabIndex={0}
         onFocus={() => { setFocused("lhs"); }}
-        ref={me => { me && katex.render(exprsToString(lhs), me, theKatexOptions) }}
+        ref={me => { me && katex.render(lhs.length > 0 ? exprsToString(lhs) : "\\quad", me, theKatexOptions) }}
         >
       </span>
       <span ref={me => { me && katex.render("\\; \\vdash \\;", me, theKatexOptions); }}>
@@ -168,7 +168,7 @@ const App = () => {
         className="input"
         tabIndex={0}
         onFocus={() => { setFocused("rhs"); }}
-        ref={me => { me && katex.render(exprsToString(rhs), me, theKatexOptions) }}
+        ref={me => { me && katex.render(rhs.length > 0 ? exprsToString(rhs) : "\\quad", me, theKatexOptions) }}
         >
       </span>
     </div>
