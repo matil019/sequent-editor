@@ -59,6 +59,7 @@ export type SequentInputProps = {
 
 export const SequentInput = (props: SequentInputProps) => {
   const {tree, setTree} = props;
+  // TODO reset focus when the tree structure has changed (e.g. a new sequent is added in the infer mode)
   const [focus, setFocus] = useState(null as TreeFocus | null);
 
   const [focusedExprs, replaceFocusedExprs]: AppliedLens<ReductionTree, Expr[]> =
