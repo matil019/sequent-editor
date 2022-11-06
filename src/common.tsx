@@ -74,21 +74,34 @@ export function appliedLensOfSequent(
   tree: ReductionTree,
   indexes: number[],
 ): AppliedLens<ReductionTree, Sequent> {
+  const [subtree, replaceSubtree] = appliedLensOfSubtree(tree, indexes);
+  if (subtree) {
+    return [subtree.sequent, (sequent) => replaceSubtree({...subtree, sequent})];
+  } else {
+    return emptyAppliedLens(tree);
+  }
+}
+
+// Like `appliedLensOfSequent`, but returns a sub-`ReductionTree` instead of its `Sequent`.
+export function appliedLensOfSubtree(
+  tree: ReductionTree,
+  indexes: number[],
+): AppliedLens<ReductionTree, ReductionTree> {
   const [index] = indexes;
   if (index) {
     const up = tree.upper[index];
     if (up) {
-      const [getter, subSetter] = appliedLensOfSequent(up, indexes.slice(1));
-      const setter = (sequent: Sequent) => ({
+      const [getter, subSetter] = appliedLensOfSubtree(up, indexes.slice(1));
+      const setter = (subtree: ReductionTree) => ({
         ...tree,
-        upper: tree.upper.slice(0, index).concat([subSetter(sequent)]).concat(tree.upper.slice(index + 1)),
+        upper: tree.upper.slice(0, index).concat([subSetter(subtree)]).concat(tree.upper.slice(index + 1)),
       });
       return [getter, setter];
     } else {
       return emptyAppliedLens(tree);
     }
   } else {
-    return [tree.sequent, (sequent) => ({...tree, sequent})];
+    return [tree, (subtree) => subtree];
   }
 }
 
