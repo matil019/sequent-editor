@@ -2,7 +2,7 @@ import React from 'react';
 import { useId, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 
-import { Expr, ReductionTree } from './common';
+import { ReductionTree } from './common';
 import { SequentInfer } from './sequent-infer';
 import { SequentInput } from './sequent-input';
 
@@ -35,11 +35,7 @@ const App = () => {
         if (mode === "input") {
           return <SequentInput tree={tree} setTree={setTree} />;
         } else {
-          // TODO pass tree and setTree themselves
-          const {sequent: {lhs, rhs}, upper} = tree;
-          const setLhs = (es: Expr[]) => ({sequent: {lhs: es, rhs}, upper});
-          const setRhs = (es: Expr[]) => ({sequent: {lhs, rhs: es}, upper});
-          return <SequentInfer lhs={lhs} setLhs={setLhs} rhs={rhs} setRhs={setRhs} />;
+          return <SequentInfer tree={tree} setTree={setTree} />;
         }
       })()}
     </>

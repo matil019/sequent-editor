@@ -2,13 +2,7 @@ import katex from 'katex';
 import React from 'react';
 import { useState } from 'react';
 
-import { Expr, ReductionTree, exprToString, theKatexOptions } from './common';
-
-function exprsToString(exprs: Expr[]): string {
-  return exprs
-    .map(expr => exprToString(expr))
-    .reduce((acc, s) => acc + ", " + s);
-}
+import { Expr, ReductionTree, TreeFocus, appliedLensOf, emptyAppliedLens, exprsToString, theKatexOptions } from './common';
 
 const buttonSpecs: {label: string, onClick: (es: Expr[]) => Expr[]}[] = [
   { label: "A", onClick: (es) => (es.concat([{me: "A", precedence: "atom", associative: "none", operands: []}])) },
@@ -54,43 +48,6 @@ const buttonSpecs: {label: string, onClick: (es: Expr[]) => Expr[]}[] = [
   { label: "\\bot", onClick: (es) => (es.concat([{me: "\\bot", precedence: "atom", associative: "none", operands: []}])) },
 ];
 
-// `indexes == []` means the root node (sequent) is focused
-type TreeFocus = {indexes: number[], side: "lhs" | "rhs"}
-
-// An applied lens that points to nothing
-function emptyAppliedLens(tree: ReductionTree): [Expr[] | null, (es: Expr[]) => ReductionTree] {
-  return [null, (_: Expr[]) => tree];
-}
-
-function appliedLensOf(
-  tree: ReductionTree,
-  focus: TreeFocus,
-): [Expr[] | null, (es: Expr[]) => ReductionTree] {
-  const [index] = focus.indexes;
-  if (index) {
-    const up = tree.upper[index];
-    if (up) {
-      const [getter, subSetter] = appliedLensOf(up, {indexes: focus.indexes.slice(1), side: focus.side});
-      const setter = (es: Expr[]) => ({
-        sequent: tree.sequent,
-        upper: tree.upper.slice(0, index).concat([subSetter(es)]).concat(tree.upper.slice(index + 1)),
-      });
-      return [getter, setter];
-    } else {
-      return emptyAppliedLens(tree);
-    }
-  } else {
-    if (focus.side === "lhs") {
-      return [tree.sequent.lhs, (es) => ({sequent: {lhs: es, rhs: tree.sequent.rhs}, upper: tree.upper})];
-    } else if (focus.side === "rhs") {
-      return [tree.sequent.rhs, (es) => ({sequent: {lhs: tree.sequent.lhs, rhs: es}, upper: tree.upper})];
-    } else {
-      const n: never = focus.side;
-      return n;
-    }
-  }
-}
-
 function eqNumbers(xs: number[], ys: number[]): boolean {
   return xs.length == ys.length && xs.every((x, i) => x == ys[i]);
 }
@@ -104,11 +61,11 @@ export const SequentInput = (props: SequentInputProps) => {
   const {tree, setTree} = props;
   const [focus, setFocus] = useState(null as TreeFocus | null);
 
-  const [focusedExprs, modifyFocusedExprs] = focus ? appliedLensOf(tree, focus) : emptyAppliedLens(tree);
+  const [focusedExprs, replaceFocusedExprs] = focus ? appliedLensOf(tree, focus) : emptyAppliedLens(tree);
 
   function treeToComponent(subtree: ReductionTree, cursor: number[]) {
     if (subtree.upper.length > 0) {
-      // TODO rename to .separator to .inference-line
+      // TODO rename .separator to .inference-line
       return (
         // TODO <div className="sequent-lines"> instead of <>?
         <>
@@ -161,7 +118,7 @@ export const SequentInput = (props: SequentInputProps) => {
           onClick={() => {
             const exprs = focusedExprs;
             if (exprs) {
-              setTree(modifyFocusedExprs(buttonSpec.onClick(exprs)));
+              setTree(replaceFocusedExprs(buttonSpec.onClick(exprs)));
             }
           }}
           >
@@ -172,7 +129,7 @@ export const SequentInput = (props: SequentInputProps) => {
         if (exprs) {
           const [e] = exprs.slice(-1);
           if (e) {
-            setTree(modifyFocusedExprs(exprs.slice(0, -1).concat(e.operands)));
+            setTree(replaceFocusedExprs(exprs.slice(0, -1).concat(e.operands)));
           }
         }
       }}>

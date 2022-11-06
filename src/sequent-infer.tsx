@@ -1,7 +1,7 @@
 import katex from 'katex';
 import React from 'react';
-import { useId, useState } from 'react';
-import { Expr, exprToString, theKatexOptions } from './common';
+import { useId } from 'react';
+import { Expr, ReductionTree, TreeFocus, appliedLensOf, exprToString, exprsToString, theKatexOptions } from './common';
 
 function renderClickableSequent(
   target: HTMLElement,
@@ -50,36 +50,65 @@ function renderClickableSequent(
 }
 
 export type SequentInferProps = {
-  lhs: Expr[],
-  setLhs: (es: Expr[]) => void,
-  rhs: Expr[],
-  setRhs: (es: Expr[]) => void,
+  tree: ReductionTree,
+  setTree: (tree: ReductionTree) => void,
 }
 
 export const SequentInfer = (props: SequentInferProps) => {
+  const {tree, setTree} = props;
   const id = useId();
-  // TODO must have a tree structure (see type Sequent), not a list of LHS/RHS pairs
-  const [lowers, setLowers] = useState([] as {lhs: Expr[], rhs: Expr[]}[]);
-  const {lhs, setLhs, rhs} = props;
+
   // TODO implement actual behaviors
   const handleWhole = (index: number) => { console.log(index.toString() + " whole clicked!"); };
   const handleRoot = (index: number) => { console.log(index.toString() + " root clicked!"); };
-  const handleRootLhs = (index: number) => {
-    const expr = lhs[index];
-    // TODO should `expr.me` be a union?
-    if (expr.me === "\\land") {
-      // ∧L
-      setLhs(lhs.slice(0, index).concat(expr.operands).concat(lhs.slice(index + 1)));
-      setLowers([{lhs, rhs}].concat(lowers));
-    } else {
-      throw `Unknown expr: ${expr.me}`;
+  const handleRootLhs = (focus: TreeFocus) => (index: number) => {
+    const [focused, replaceFocused] = appliedLensOf(tree, focus);
+    if (focused) {
+      const expr = focused[index];
+      // TODO should `expr.me` be a union?
+      if (expr.me === "\\land") {
+        // ∧L
+        // TODO Add an upper sequent, instead of modifying this sequent
+        // TODO to do this, we need to separate the lens to two; one for Lens ReductionTree Sequent, one for Lens Sequent Expr[]
+        setTree(replaceFocused(focused.slice(0, index).concat(expr.operands).concat(focused.slice(index + 1))));
+      } else {
+        throw `Unknown expr: ${expr.me}`;
+      }
     }
   };
-  return (
-    <div>
-      <span ref={me => { me && renderClickableSequent(me, lhs, id + "lhs", handleWhole, handleRootLhs); }} />
-      <span ref={me => { me && katex.render("\\; \\vdash \\;", me, theKatexOptions); }} />
-      <span ref={me => { me && renderClickableSequent(me, rhs, id + "rhs", handleWhole, handleRoot); }} />
-    </div>
-  );
+
+  function treeToComponent(subtree: ReductionTree, cursor: number[]) {
+    if (subtree.upper.length > 0) {
+      // TODO rename .separator to .inference-line
+      return (
+        // TODO <div className="sequent-lines"> instead of <>?
+        <>
+          <div className="sequent-lines">
+            {subtree.upper.map((u, idx) => treeToComponent(u, cursor.concat([idx])))}
+          </div>
+          <div className="separator" />
+          <div className="katex-container" ref={me => {
+            if (me) {
+              const {sequent: {lhs, rhs}} = subtree;
+              const s = exprsToString(lhs) + " \\vdash " + exprsToString(rhs);
+              katex.render(s, me, theKatexOptions);
+            }
+          }} />
+        </>
+      );
+    } else {
+      // only leaf nodes should be modifiable
+      const {sequent: {lhs, rhs}} = subtree;
+      const leafId = cursor.reduce((acc, x) => acc + "-" + x.toString(), id);
+      return (
+        <div className="katex-container">
+          <span ref={me => { me && renderClickableSequent(me, lhs, leafId + "lhs", handleWhole, handleRootLhs({indexes: cursor, side: "lhs"})); }} />
+          <span ref={me => { me && katex.render("\\; \\vdash \\;", me, theKatexOptions); }} />
+          <span ref={me => { me && renderClickableSequent(me, rhs, leafId + "rhs", handleWhole, handleRoot); }} />
+        </div>
+      );
+    }
+  }
+
+  return treeToComponent(tree, []);
 };
