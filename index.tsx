@@ -148,7 +148,7 @@ const App = () => {
     else if (focused === "rhs")
       return [rhs, setRhs];
     else
-      return [null, null];
+      return [null, () => {}];
   })();
 
   const sequentDisplay = (
@@ -182,7 +182,7 @@ const App = () => {
           onClick={() => {
             const exprs = focusedExprs;
             if (exprs) {
-              setFocusedExprs!(buttonSpec.onClick(exprs));
+              setFocusedExprs(buttonSpec.onClick(exprs));
             }
           }}
           >
@@ -193,7 +193,7 @@ const App = () => {
         if (exprs) {
           const [e] = exprs.slice(-1);
           if (e) {
-            setFocusedExprs!(exprs.slice(0, -1).concat(e.operands));
+            setFocusedExprs(exprs.slice(0, -1).concat(e.operands));
           }
         }
       }}>
