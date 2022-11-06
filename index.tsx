@@ -1,7 +1,7 @@
 import katex from 'katex';
 import { KatexOptions } from 'katex';
 import React from 'react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 
 type Sequent = { expr: string, upper: Sequent[] }
@@ -138,9 +138,11 @@ const buttonSpecs: {label: string, onClick: (es: Expr[]) => Expr[]}[] = [
 ];
 
 const App = () => {
+  const id = useId();
   const [lhs, setLhs] = useState([] as Expr[]);
   const [rhs, setRhs] = useState([] as Expr[]);
   const [focused, setFocused] = useState(null as "lhs" | "rhs" | null);
+  const [mode, setMode] = useState("input" as "input" | "infer");
 
   const [focusedExprs, setFocusedExprs] = (() => {
     if (focused === "lhs")
@@ -205,7 +207,29 @@ const App = () => {
   return (
     <>
       {sequentDisplay}
-      {buttons}
+      <div>
+        <div>
+          <input
+            type="radio"
+            id={id + "modeinput"}
+            name="mode"
+            checked={mode === "input"}
+            onChange={e => { if (e.target.checked) setMode("input"); }}
+            />
+          <label htmlFor={id + "modeinput"}>Input</label>
+          {buttons}
+        </div>
+        <div>
+          <input
+            type="radio"
+            id={id + "modeinfer"}
+            name="mode"
+            checked={mode === "infer"}
+            onChange={e => { if (e.target.checked) setMode("infer"); }}
+            />
+          <label htmlFor={id + "modeinfer"}>Infer</label>
+        </div>
+      </div>
     </>
   );
 };
