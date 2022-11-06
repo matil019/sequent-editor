@@ -1,7 +1,7 @@
 import katex from 'katex';
 import React from 'react';
 import { useId } from 'react';
-import { Expr, ReductionTree, TreeFocus, appliedLensOf, exprToString, exprsToString, theKatexOptions } from './common';
+import { Expr, ReductionTree, TreeFocus, appliedLensOf, appliedLensOfSubtree, exprToString, exprsToString, theKatexOptions } from './common';
 
 function renderClickableSequent(
   target: HTMLElement,
@@ -62,17 +62,23 @@ export const SequentInfer = (props: SequentInferProps) => {
   const handleWhole = (index: number) => { console.log(index.toString() + " whole clicked!"); };
   const handleRoot = (index: number) => { console.log(index.toString() + " root clicked!"); };
   const handleRootLhs = (focus: TreeFocus) => (index: number) => {
-    const [focused, replaceFocused] = appliedLensOf(tree, focus);
-    if (focused) {
-      const expr = focused[index];
-      // TODO should `expr.me` be a union?
-      if (expr.me === "\\land") {
-        // ∧L
-        // TODO Add an upper sequent, instead of modifying this sequent
-        // TODO to do this, we need to separate the lens to two; one for Lens ReductionTree Sequent, one for Lens Sequent Expr[]
-        setTree(replaceFocused(focused.slice(0, index).concat(expr.operands).concat(focused.slice(index + 1))));
-      } else {
-        throw `Unknown expr: ${expr.me}`;
+    const [subtree, replaceSubtree] = appliedLensOfSubtree(tree, focus.indexes);
+    if (subtree) {
+      // Here, it is assumed that `focus` points to a leaf of `ReductionTree`
+      const [exprs, replaceExprs] = appliedLensOf(subtree, {...focus, indexes: []});
+      if (exprs) {
+        const expr = exprs[index];
+        // TODO should `expr.me` be a union?
+        if (expr.me === "\\land") {
+          // ∧L
+          // Add an upper sequent, instead of modifying this sequent
+          setTree(replaceSubtree({
+            ...subtree,
+            upper: [replaceExprs(exprs.slice(0, index).concat(expr.operands).concat(exprs.slice(index + 1)))],
+          }));
+        } else {
+          throw `Unknown expr: ${expr.me}`;
+        }
       }
     }
   };
