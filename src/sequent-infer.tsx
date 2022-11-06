@@ -1,7 +1,7 @@
 import katex from 'katex';
 import React from 'react';
 import { useId } from 'react';
-import { Expr, ReductionTree, TreeFocus, appliedLensOf, appliedLensOfSubtree, exprToString, exprsToString, theKatexOptions } from './common';
+import { Expr, ReductionTree, TreeFocus, appliedLensOf, appliedLensOfSubtree, exprToString, theKatexOptions, treeToComponent } from './common';
 
 function renderClickableSequent(
   target: HTMLElement,
@@ -96,42 +96,16 @@ export const SequentInfer = (props: SequentInferProps) => {
     }
   };
 
-  function treeToComponent(subtree: ReductionTree, cursor: number[]): JSX.Element {
-    if (subtree.upper.length > 0) {
-      // TODO rename .separator to .inference-line
-      return (
-        <>
-          {subtree.upper.map((u, idx) => {
-            const newCursor = cursor.concat([idx]);
-            return (
-              <div className="sequent-lines" key={newCursor.map(i => i.toString()).reduce((acc, s) => acc + "-" + s)}>
-                {treeToComponent(u, newCursor)}
-              </div>
-            );
-          })}
-          <div className="separator" />
-          <div className="katex-container" ref={me => {
-            if (me) {
-              const {sequent: {lhs, rhs}} = subtree;
-              const s = exprsToString(lhs) + " \\vdash " + exprsToString(rhs);
-              katex.render(s, me, theKatexOptions);
-            }
-          }} />
-        </>
-      );
-    } else {
-      // only leaf nodes should be modifiable
-      const {sequent: {lhs, rhs}} = subtree;
-      const leafId = cursor.reduce((acc, x) => acc + "-" + x.toString(), id);
-      return (
-        <div className="katex-container">
-          <span ref={me => { me && renderClickableSequent(me, lhs, leafId + "lhs", handleWhole, handleRootLhs({indexes: cursor, side: "lhs"})); }} />
-          <span ref={me => { me && katex.render("\\; \\vdash \\;", me, theKatexOptions); }} />
-          <span ref={me => { me && renderClickableSequent(me, rhs, leafId + "rhs", handleWhole, handleRoot); }} />
-        </div>
-      );
-    }
-  }
-
-  return treeToComponent(tree, []);
+  return treeToComponent(tree, (leaf: ReductionTree, indexes: number[]) => {
+    // only leaf nodes should be modifiable
+    const {sequent: {lhs, rhs}} = leaf;
+    const leafId = indexes.reduce((acc, x) => acc + "-" + x.toString(), id);
+    return (
+      <div className="katex-container">
+        <span ref={me => { me && renderClickableSequent(me, lhs, leafId + "lhs", handleWhole, handleRootLhs({indexes, side: "lhs"})); }} />
+        <span ref={me => { me && katex.render("\\; \\vdash \\;", me, theKatexOptions); }} />
+        <span ref={me => { me && renderClickableSequent(me, rhs, leafId + "rhs", handleWhole, handleRoot); }} />
+      </div>
+    );
+  });
 };

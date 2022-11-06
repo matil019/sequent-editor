@@ -1,4 +1,6 @@
+import katex from 'katex';
 import { KatexOptions } from 'katex';
+import React from 'react';
 
 export const theKatexOptions: KatexOptions = {
   throwOnError: false,
@@ -134,4 +136,35 @@ export function appliedLensOf(
   } else {
     return emptyAppliedLens(tree);
   }
+}
+
+export function treeToComponent(tree: ReductionTree, leafToComponent: (leaf: ReductionTree, indexes: number[]) => JSX.Element): JSX.Element {
+  function recurse(subtree: ReductionTree, indexes: number[]): JSX.Element {
+    if (subtree.upper.length > 0) {
+      // TODO rename .separator to .inference-line
+      return (
+        <>
+          {subtree.upper.map((u, idx) => {
+            const newIndexes = indexes.concat([idx]);
+            return (
+              <div className="sequent-lines" key={newIndexes.map(i => i.toString()).reduce((acc, s) => acc + "-" + s)}>
+                {recurse(u, newIndexes)}
+              </div>
+            );
+          })}
+          <div className="separator" />
+          <div className="katex-container" ref={me => {
+            if (me) {
+              const {sequent: {lhs, rhs}} = subtree;
+              const s = exprsToString(lhs) + " \\vdash " + exprsToString(rhs);
+              katex.render(s, me, theKatexOptions);
+            }
+          }} />
+        </>
+      );
+    } else {
+      return leafToComponent(subtree, indexes);
+    }
+  }
+  return recurse(tree, []);
 }
