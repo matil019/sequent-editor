@@ -2,7 +2,7 @@ import katex from 'katex';
 import React from 'react';
 import { useState } from 'react';
 
-import { Expr, ReductionTree, TreeFocus, appliedLensOf, emptyAppliedLens, exprsToString, theKatexOptions } from './common';
+import { AppliedLens, Expr, ReductionTree, TreeFocus, appliedLensOf, emptyAppliedLens, exprsToString, theKatexOptions } from './common';
 
 const buttonSpecs: {label: string, onClick: (es: Expr[]) => Expr[]}[] = [
   { label: "A", onClick: (es) => (es.concat([{me: "A", precedence: "atom", associative: "none", operands: []}])) },
@@ -61,7 +61,8 @@ export const SequentInput = (props: SequentInputProps) => {
   const {tree, setTree} = props;
   const [focus, setFocus] = useState(null as TreeFocus | null);
 
-  const [focusedExprs, replaceFocusedExprs] = focus ? appliedLensOf(tree, focus) : emptyAppliedLens(tree);
+  const [focusedExprs, replaceFocusedExprs]: AppliedLens<ReductionTree, Expr[]> =
+    focus ? appliedLensOf(tree, focus) : emptyAppliedLens(tree);
 
   function treeToComponent(subtree: ReductionTree, cursor: number[]) {
     if (subtree.upper.length > 0) {

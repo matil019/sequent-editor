@@ -53,41 +53,68 @@ export function exprsToString(exprs: Expr[]): string {
     .reduce((acc, s) => acc + ", " + s);
 }
 
-export type ReductionTree = { sequent: {lhs: Expr[], rhs: Expr[]}, upper: ReductionTree[] }
+export type Sequent = {lhs: Expr[], rhs: Expr[]}
+
+export type ReductionTree = { sequent: Sequent, upper: ReductionTree[] }
 
 // `indexes == []` means the root node (sequent) is focused
 export type TreeFocus = {indexes: number[], side: "lhs" | "rhs"}
 
+// A poor-man's lens which is already applied to its focus.
+//
+// *Note* this is technically an `AppliedOptional` because it may points to nothing (`emptyAppliedLens`).
+export type AppliedLens<S, A> = [A | null, (b: A) => S]
+
 // An applied lens that points to nothing
-export function emptyAppliedLens(tree: ReductionTree): [Expr[] | null, (es: Expr[]) => ReductionTree] {
-  return [null, (_: Expr[]) => tree];
+export function emptyAppliedLens<S, A>(s: S): AppliedLens<S, A> {
+  return [null, (_) => s];
 }
 
-export function appliedLensOf(
+export function appliedLensOfSequent(
   tree: ReductionTree,
-  focus: TreeFocus,
-): [Expr[] | null, (es: Expr[]) => ReductionTree] {
-  const [index] = focus.indexes;
+  indexes: number[],
+): AppliedLens<ReductionTree, Sequent> {
+  const [index] = indexes;
   if (index) {
     const up = tree.upper[index];
     if (up) {
-      const [getter, subSetter] = appliedLensOf(up, {indexes: focus.indexes.slice(1), side: focus.side});
-      const setter = (es: Expr[]) => ({
-        sequent: tree.sequent,
-        upper: tree.upper.slice(0, index).concat([subSetter(es)]).concat(tree.upper.slice(index + 1)),
+      const [getter, subSetter] = appliedLensOfSequent(up, indexes.slice(1));
+      const setter = (sequent: Sequent) => ({
+        ...tree,
+        upper: tree.upper.slice(0, index).concat([subSetter(sequent)]).concat(tree.upper.slice(index + 1)),
       });
       return [getter, setter];
     } else {
       return emptyAppliedLens(tree);
     }
   } else {
-    if (focus.side === "lhs") {
-      return [tree.sequent.lhs, (es) => ({sequent: {lhs: es, rhs: tree.sequent.rhs}, upper: tree.upper})];
-    } else if (focus.side === "rhs") {
-      return [tree.sequent.rhs, (es) => ({sequent: {lhs: tree.sequent.lhs, rhs: es}, upper: tree.upper})];
-    } else {
-      const n: never = focus.side;
-      return n;
-    }
+    return [tree.sequent, (sequent) => ({...tree, sequent})];
+  }
+}
+
+export function appliedLensOfExprs(
+  sequent: Sequent,
+  side: "lhs" | "rhs",
+): AppliedLens<Sequent, Expr[]> {
+  if (side === "lhs") {
+    return [sequent.lhs, (es) => ({...sequent, lhs: es})];
+  } else if (side === "rhs") {
+    return [sequent.rhs, (es) => ({...sequent, rhs: es})];
+  } else {
+    const n: never = side;
+    return n;
+  }
+}
+
+export function appliedLensOf(
+  tree: ReductionTree,
+  focus: TreeFocus,
+): AppliedLens<ReductionTree, Expr[]> {
+  const [sequent, replaceSequent] = appliedLensOfSequent(tree, focus.indexes);
+  if (sequent) {
+    const [exprs, replaceExprs] = appliedLensOfExprs(sequent, focus.side);
+    return [exprs, (es) => replaceSequent(replaceExprs(es))];
+  } else {
+    return emptyAppliedLens(tree);
   }
 }
