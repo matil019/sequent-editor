@@ -2,7 +2,7 @@ import katex from 'katex';
 import React from 'react';
 import { useState } from 'react';
 
-import { Expr, exprToString, theKatexOptions } from './common';
+import { Expr, ReductionTree, exprToString, theKatexOptions } from './common';
 
 function exprsToString(exprs: Expr[]): string {
   return exprs
@@ -56,6 +56,39 @@ const buttonSpecs: {label: string, onClick: (es: Expr[]) => Expr[]}[] = [
   }},
   { label: "\\bot", onClick: (es) => (es.concat([{me: "\\bot", precedence: "atom", associative: "none", operands: []}])) },
 ];
+
+// `indexes == []` means the root node (sequent) is focused
+type TreeFocus = {indexes: number[], side: "lhs" | "rhs"}
+
+function appliedLensOf(
+  tree: ReductionTree,
+  focus: TreeFocus,
+): [Expr[] | null, (es: Expr[]) => ReductionTree] {
+  const [index] = focus.indexes;
+  if (index) {
+    const up = tree.upper[index];
+    if (up) {
+      const [getter, subSetter] = appliedLensOf(up, {indexes: focus.indexes.slice(1), side: focus.side});
+      const setter = (es: Expr[]) => ({
+        sequent: tree.sequent,
+        upper: tree.upper.slice(0, index).concat([subSetter(es)]).concat(tree.upper.slice(index + 1)),
+      });
+      return [getter, setter];
+    } else {
+      // a lens that points to nothing
+      return [null, (_) => tree];
+    }
+  } else {
+    if (focus.side === "lhs") {
+      return [tree.sequent.lhs, (es) => ({sequent: {lhs: es, rhs: tree.sequent.rhs}, upper: tree.upper})];
+    } else if (focus.side === "rhs") {
+      return [tree.sequent.rhs, (es) => ({sequent: {lhs: tree.sequent.lhs, rhs: es}, upper: tree.upper})];
+    } else {
+      const n: never = focus.side;
+      return n;
+    }
+  }
+}
 
 export type SequentInputProps = {
   lhs: Expr[],
