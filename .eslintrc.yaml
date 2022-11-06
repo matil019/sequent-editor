@@ -1,0 +1,12 @@
+root: true
+parser: "@typescript-eslint/parser"
+plugins:
+  - "@typescript-eslint"
+  - "react"
+extends:
+  - "eslint:recommended"
+  - "plugin:@typescript-eslint/recommended"
+  - "plugin:react/recommended"
+rules:
+  semi: ["error", "always"]
+  react/no-set-state: "off"
