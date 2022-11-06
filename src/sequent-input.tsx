@@ -96,16 +96,12 @@ function eqNumbers(xs: number[], ys: number[]): boolean {
 }
 
 export type SequentInputProps = {
-  lhs: Expr[],
-  setLhs: (es: Expr[]) => void,
-  rhs: Expr[],
-  setRhs: (es: Expr[]) => void,
+  tree: ReductionTree,
+  setTree: (tree: ReductionTree) => void,
 }
 
-export const SequentInput = (_props: SequentInputProps) => {
-  // const {lhs, setLhs, rhs, setRhs} = props;
-  // TODO use props instead of state
-  const [tree, setTree] = useState({sequent: {lhs: [], rhs: []}, upper: []} as ReductionTree);
+export const SequentInput = (props: SequentInputProps) => {
+  const {tree, setTree} = props;
   const [focus, setFocus] = useState(null as TreeFocus | null);
 
   const [focusedExprs, modifyFocusedExprs] = focus ? appliedLensOf(tree, focus) : emptyAppliedLens(tree);

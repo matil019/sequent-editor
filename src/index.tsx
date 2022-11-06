@@ -2,15 +2,14 @@ import React from 'react';
 import { useId, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 
-import { Expr } from './common';
+import { Expr, ReductionTree } from './common';
 import { SequentInfer } from './sequent-infer';
 import { SequentInput } from './sequent-input';
 
 const App = () => {
   const id = useId();
   const [mode, setMode] = useState("input" as "input" | "infer");
-  const [lhs, setLhs] = useState([] as Expr[]);
-  const [rhs, setRhs] = useState([] as Expr[]);
+  const [tree, setTree] = useState({sequent: {lhs: [], rhs: []}, upper: []} as ReductionTree);
 
   return (
     <>
@@ -34,8 +33,12 @@ const App = () => {
       </div>
       {(() => {
         if (mode === "input") {
-          return <SequentInput lhs={lhs} setLhs={setLhs} rhs={rhs} setRhs={setRhs} />;
+          return <SequentInput tree={tree} setTree={setTree} />;
         } else {
+          // TODO pass tree and setTree themselves
+          const {sequent: {lhs, rhs}, upper} = tree;
+          const setLhs = (es: Expr[]) => ({sequent: {lhs: es, rhs}, upper});
+          const setRhs = (es: Expr[]) => ({sequent: {lhs, rhs: es}, upper});
           return <SequentInfer lhs={lhs} setLhs={setLhs} rhs={rhs} setRhs={setRhs} />;
         }
       })()}
