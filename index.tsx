@@ -137,9 +137,15 @@ const buttonSpecs: {label: string, onClick: (es: Expr[]) => Expr[]}[] = [
   { label: "\\bot", onClick: (es) => (es.concat([{me: "\\bot", precedence: "atom", associative: "none", operands: []}])) },
 ];
 
-const SequentInput = () => {
-  const [lhs, setLhs] = useState([] as Expr[]);
-  const [rhs, setRhs] = useState([] as Expr[]);
+type SequentInputProps = {
+  lhs: Expr[],
+  setLhs: (es: Expr[]) => void,
+  rhs: Expr[],
+  setRhs: (es: Expr[]) => void,
+}
+
+const SequentInput = (props: SequentInputProps) => {
+  const {lhs, setLhs, rhs, setRhs} = props;
   const [focused, setFocused] = useState(null as "lhs" | "rhs" | null);
 
   const [focusedExprs, setFocusedExprs] = (() => {
@@ -159,18 +165,15 @@ const SequentInput = () => {
         tabIndex={0}
         onFocus={() => { setFocused("lhs"); }}
         ref={me => { me && katex.render(lhs.length > 0 ? exprsToString(lhs) : "\\quad", me, theKatexOptions) }}
-        >
-      </span>
-      <span ref={me => { me && katex.render("\\; \\vdash \\;", me, theKatexOptions); }}>
-      </span>
+        />
+      <span ref={me => { me && katex.render("\\; \\vdash \\;", me, theKatexOptions); }} />
       <span
         id="rhs"
         className={"input" + (focused === "rhs" ? " focused" : "")}
         tabIndex={0}
         onFocus={() => { setFocused("rhs"); }}
         ref={me => { me && katex.render(rhs.length > 0 ? exprsToString(rhs) : "\\quad", me, theKatexOptions) }}
-        >
-      </span>
+        />
     </div>
   );
 
@@ -208,11 +211,29 @@ const SequentInput = () => {
       {sequentDisplay}
     </div>
   );
+};
+
+type SequentInferProps = {
+  lhs: Expr[],
+  rhs: Expr[],
 }
+
+const SequentInfer = (props: SequentInferProps) => {
+  const {lhs, rhs} = props;
+  return (
+    <div>
+      <span ref={me => { me && katex.render(lhs.length > 0 ? exprsToString(lhs) : "\\quad", me, theKatexOptions); }} />
+      <span ref={me => { me && katex.render("\\; \\vdash \\;", me, theKatexOptions); }} />
+      <span ref={me => { me && katex.render(rhs.length > 0 ? exprsToString(rhs) : "\\quad", me, theKatexOptions); }} />
+    </div>
+  );
+};
 
 const App = () => {
   const id = useId();
   const [mode, setMode] = useState("input" as "input" | "infer");
+  const [lhs, setLhs] = useState([] as Expr[]);
+  const [rhs, setRhs] = useState([] as Expr[]);
 
   return (
     <>
@@ -234,7 +255,13 @@ const App = () => {
           />
         <label htmlFor={id + "modeinfer"}>Infer</label>
       </div>
-      {(mode === "input") ? <SequentInput /> : <div />}
+      {(() => {
+        if (mode === "input") {
+          return <SequentInput lhs={lhs} setLhs={setLhs} rhs={rhs} setRhs={setRhs} />;
+        } else {
+          return <SequentInfer lhs={lhs} rhs={rhs} />;
+        }
+      })()}
     </>
   );
 };
