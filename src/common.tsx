@@ -46,3 +46,4 @@ export function exprToString(expr: Expr): string {
       + ((op1.precedence < expr.precedence || op1.precedence === expr.precedence && op1.associative === "left") ? paren(sop1) : sop1);
   }
 }
+export type ReductionTree = { sequent: {lhs: Expr[], rhs: Expr[]}, upper: ReductionTree[] }
