@@ -137,12 +137,10 @@ const buttonSpecs: {label: string, onClick: (es: Expr[]) => Expr[]}[] = [
   { label: "\\bot", onClick: (es) => (es.concat([{me: "\\bot", precedence: "atom", associative: "none", operands: []}])) },
 ];
 
-const App = () => {
-  const id = useId();
+const SequentInput = () => {
   const [lhs, setLhs] = useState([] as Expr[]);
   const [rhs, setRhs] = useState([] as Expr[]);
   const [focused, setFocused] = useState(null as "lhs" | "rhs" | null);
-  const [mode, setMode] = useState("input" as "input" | "infer");
 
   const [focusedExprs, setFocusedExprs] = (() => {
     if (focused === "lhs")
@@ -205,31 +203,38 @@ const App = () => {
   );
 
   return (
-    <>
+    <div>
+      {buttons}
       {sequentDisplay}
+    </div>
+  );
+}
+
+const App = () => {
+  const id = useId();
+  const [mode, setMode] = useState("input" as "input" | "infer");
+
+  return (
+    <>
       <div>
-        <div>
-          <input
-            type="radio"
-            id={id + "modeinput"}
-            name="mode"
-            checked={mode === "input"}
-            onChange={e => { if (e.target.checked) setMode("input"); }}
-            />
-          <label htmlFor={id + "modeinput"}>Input</label>
-          {buttons}
-        </div>
-        <div>
-          <input
-            type="radio"
-            id={id + "modeinfer"}
-            name="mode"
-            checked={mode === "infer"}
-            onChange={e => { if (e.target.checked) setMode("infer"); }}
-            />
-          <label htmlFor={id + "modeinfer"}>Infer</label>
-        </div>
+        <input
+          type="radio"
+          id={id + "modeinput"}
+          name="mode"
+          checked={mode === "input"}
+          onChange={e => { if (e.target.checked) setMode("input"); }}
+          />
+        <label htmlFor={id + "modeinput"}>Input</label>
+        <input
+          type="radio"
+          id={id + "modeinfer"}
+          name="mode"
+          checked={mode === "infer"}
+          onChange={e => { if (e.target.checked) setMode("infer"); }}
+          />
+        <label htmlFor={id + "modeinfer"}>Infer</label>
       </div>
+      {(mode === "input") ? <SequentInput /> : <div />}
     </>
   );
 };
