@@ -75,7 +75,7 @@ const App = () => {
         if (mode === "input") {
           return <SequentInput lhs={lhs} setLhs={setLhs} rhs={rhs} setRhs={setRhs} />;
         } else {
-          return <SequentInfer lhs={lhs} rhs={rhs} />;
+          return <SequentInfer lhs={lhs} setLhs={setLhs} rhs={rhs} setRhs={setRhs} />;
         }
       })()}
     </>

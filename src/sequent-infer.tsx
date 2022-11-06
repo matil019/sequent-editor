@@ -1,6 +1,6 @@
 import katex from 'katex';
 import React from 'react';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { Expr, exprToString, theKatexOptions } from './common';
 
 function renderClickableSequent(
@@ -51,18 +51,33 @@ function renderClickableSequent(
 
 export type SequentInferProps = {
   lhs: Expr[],
+  setLhs: (es: Expr[]) => void,
   rhs: Expr[],
+  setRhs: (es: Expr[]) => void,
 }
 
 export const SequentInfer = (props: SequentInferProps) => {
   const id = useId();
-  const {lhs, rhs} = props;
+  // TODO must have a tree structure (see type Sequent), not a list of LHS/RHS pairs
+  const [lowers, setLowers] = useState([] as {lhs: Expr[], rhs: Expr[]}[]);
+  const {lhs, setLhs, rhs} = props;
   // TODO implement actual behaviors
   const handleWhole = (index: number) => { console.log(index.toString() + " whole clicked!"); };
   const handleRoot = (index: number) => { console.log(index.toString() + " root clicked!"); };
+  const handleRootLhs = (index: number) => {
+    const expr = lhs[index];
+    // TODO should `expr.me` be a union?
+    if (expr.me === "\\land") {
+      // ∧L
+      setLhs(lhs.slice(0, index).concat(expr.operands).concat(lhs.slice(index + 1)));
+      setLowers([{lhs, rhs}].concat(lowers));
+    } else {
+      throw `Unknown expr: ${expr.me}`;
+    }
+  };
   return (
     <div>
-      <span ref={me => { me && renderClickableSequent(me, lhs, id + "lhs", handleWhole, handleRoot); }} />
+      <span ref={me => { me && renderClickableSequent(me, lhs, id + "lhs", handleWhole, handleRootLhs); }} />
       <span ref={me => { me && katex.render("\\; \\vdash \\;", me, theKatexOptions); }} />
       <span ref={me => { me && renderClickableSequent(me, rhs, id + "rhs", handleWhole, handleRoot); }} />
     </div>
