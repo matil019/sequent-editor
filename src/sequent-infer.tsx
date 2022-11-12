@@ -54,6 +54,7 @@ export type SequentInferProps = {
   setTree: (tree: ReductionTree) => void,
 }
 
+// Inspired by Seq#patch from Scala
 function patchArray<A>(arr: A[], start: number, newElems: A[], numReplace: number): A[] {
   return arr.slice(0, start).concat(newElems).concat(arr.slice(start + numReplace));
 }
@@ -71,6 +72,16 @@ function doInfer(sequent: Sequent, side: "lhs" | "rhs", index: number): Sequent[
       return [
         exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, [expr.operands[0]!], 1), sequent),
         exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, [expr.operands[1]!], 1), sequent),
+      ];
+    } else if (expr?.me === "\\to") {
+      // →L
+      // Since we don't know how to distribute unrelated exprs, we copy all of them to the upper
+      // sequents. This makes the program incompatible with intuitionistic logic because one of the
+      // RHS gets two exprs. As a workaround, the user can apply WR immediately.
+      const sequent1 = exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, [], 1), sequent);
+      return [
+        exprsAtSide("rhs").modify(exprs => [expr.operands[0]!].concat(exprs), sequent1),
+        exprsAtSide("lhs").modify(exprs => exprs.concat([expr.operands[1]!]), sequent1),
       ];
     } else {
       throw `Unknown expr: ${expr?.me}`;
