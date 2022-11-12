@@ -60,7 +60,8 @@ function patchArray<A>(arr: A[], start: number, newElems: A[], numReplace: numbe
 
 function doInfer(exprs: Expr[], index: number): Expr[][] {
   const expr = exprs[index];
-  // TODO should `Expr.me` be a union?
+  // TODO use "Discriminated unions" to get rid of non-null assertions
+  // https://www.typescriptlang.org/docs/handbook/2/narrowing.html#discriminated-unions
   if (expr?.me === "\\land") {
     // ∧L
     return [patchArray(exprs, index, expr.operands, 1)];
