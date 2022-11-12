@@ -3,20 +3,74 @@ import React from 'react';
 import { useId } from 'react';
 import { Expr, ReductionTree, Sequent, TreeFocus, exprsAtSide, exprToString, subtreeAtIndexes, theKatexOptions, treeToComponent } from './common';
 
+interface OpConj {
+  kind: "conj";
+  op1: Expr;
+  op2: Expr;
+}
+
+interface OpDisj {
+  kind: "disj";
+  op1: Expr;
+  op2: Expr;
+}
+
+interface OpImply {
+  kind: "imply";
+  op1: Expr;
+  op2: Expr;
+}
+
+interface OpNeg {
+  kind: "neg";
+  op1: Expr;
+}
+
+// "Discriminated unions"
+// https://www.typescriptlang.org/docs/handbook/2/narrowing.html#discriminated-unions
+type Operator = OpConj | OpDisj | OpImply | OpNeg
+
+function exprToOperator(expr: Expr): Operator | null {
+  if (expr.me === "\\land") {
+    const op1 = expr.operands[0];
+    const op2 = expr.operands[1];
+    return (op1 != null && op2 != null) ? ({ kind: "conj", op1, op2 }) : null;
+  } else if (expr.me === "\\lor") {
+    const op1 = expr.operands[0];
+    const op2 = expr.operands[1];
+    return (op1 != null && op2 != null) ? ({ kind: "disj", op1, op2 }) : null;
+  } else if (expr.me === "\\to") {
+    const op1 = expr.operands[0];
+    const op2 = expr.operands[1];
+    return (op1 != null && op2 != null) ? ({ kind: "imply", op1, op2 }) : null;
+  } else if (expr.me === "\\neg") {
+    const op1 = expr.operands[0];
+    return (op1 != null) ? ({ kind: "neg", op1 }) : null;
+  } else {
+    return null;
+  }
+}
+
 function renderClickableSequent(
   target: HTMLElement,
   exprs: Expr[],
   idPrefix: string,
   handleClickWhole: (index: number) => void,
-  handleClickRoot: (index: number) => void,
+  handleClickRoot: (index: number, op: Operator) => void,
 ): void {
   // "whole" means the whole proposition (i.e. outermost HTML DOM node)
   // "root" means the root node of the Expr tree structure (i.e. outermost Expr node, not DOM)
   const wholeId = (index: number) => `${idPrefix}${index.toString()}whole`;
   const rootId = (index: number) => `${idPrefix}${index.toString()}root`;
+  const rootOpMap: Map<string, Operator> = new Map();
   const katexInput = exprs
     .map((expr, index) => {
-      if (expr.operands.length > 0) {
+      // Converts an Expr with a known operator to Operator.
+      // Non-operators, malformed operators and unknown operators are ignored
+      // (click event handlers won't be installed).
+      const op = exprToOperator(expr);
+      if (op != null) {
+        rootOpMap.set(rootId(index), op);
         const exprWithId = {
           ...expr,
           me: `\\htmlId{${rootId(index)}}{${expr.me}}`,
@@ -38,12 +92,13 @@ function renderClickableSequent(
       wholeElem.addEventListener("click", () => handleClickWhole(index));
     }
     const rootElem = document.getElementById(rootId(index));
-    if (rootElem) {
+    const rootOp = rootOpMap.get(rootId(index));
+    if (rootElem != null && rootOp != null) {
       rootElem.addEventListener("click", (e) => {
         // Prevent the whole element from being triggered as well
         // (AFAIK root is always triggered before whole)
         e.stopPropagation();
-        handleClickRoot(index);
+        handleClickRoot(index, rootOp);
       });
     }
   }
@@ -54,72 +109,63 @@ function patchArray<A>(arr: A[], start: number, newElems: A[], numReplace: numbe
   return arr.slice(0, start).concat(newElems).concat(arr.slice(start + numReplace));
 }
 
-function doInfer(sequent: Sequent, side: "lhs" | "rhs", index: number): Sequent[] {
-  // TODO use "Discriminated unions" to get rid of non-null assertions
-  // https://www.typescriptlang.org/docs/handbook/2/narrowing.html#discriminated-unions
-
+function doInfer(sequent: Sequent, side: "lhs" | "rhs", index: number, op: Operator): Sequent[] {
   // Since we don't know how to distribute unrelated exprs, we copy all of them to the upper
   // sequents. This makes the program incompatible with intuitionistic logic because one of the
   // RHS gets two exprs.
   // As a workaround, the user can apply WL/WR immediately.
   if (side === "lhs") {
-    const expr = sequent.lhs[index];
-    if (expr?.me === "\\land") {
+    if (op.kind === "conj") {
       // ∧L
-      return [exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, expr.operands, 1), sequent)];
-    } else if (expr?.me === "\\lor") {
+      return [exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, [op.op1, op.op2], 1), sequent)];
+    } else if (op.kind === "disj") {
       // ∨L
       return [
-        exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, [expr.operands[0]!], 1), sequent),
-        exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, [expr.operands[1]!], 1), sequent),
+        exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, [op.op1], 1), sequent),
+        exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, [op.op2], 1), sequent),
       ];
-    } else if (expr?.me === "\\to") {
+    } else if (op.kind === "imply") {
       // →L
       const sequent1 = exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, [], 1), sequent);
       return [
-        exprsAtSide("rhs").modify(exprs => [expr.operands[0]!].concat(exprs), sequent1),
-        exprsAtSide("lhs").modify(exprs => exprs.concat([expr.operands[1]!]), sequent1),
+        exprsAtSide("rhs").modify(exprs => [op.op1].concat(exprs), sequent1),
+        exprsAtSide("lhs").modify(exprs => exprs.concat([op.op2]), sequent1),
       ];
-    } else if (expr?.me === "\\neg") {
+    } else if (op.kind === "neg") {
       // ¬L
       return [
         exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, [], 1),
-          exprsAtSide("rhs").modify(exprs => [expr.operands[0]!].concat(exprs), sequent)),
+          exprsAtSide("rhs").modify(exprs => [op.op1].concat(exprs), sequent)),
       ];
     } else {
-      // expr is not a known operator; this should not happen.
-      // TODO take an additional parameter which is a discriminated union, instead of
-      // branching on expr.me itself?
-      throw `Unknown expr: ${expr?.me}`;
+      const n: never = op;
+      return n;
     }
   } else if (side === "rhs") {
-    const expr = sequent.rhs[index];
-    if (expr?.me === "\\land") {
+    if (op.kind === "conj") {
       // ∧R
       return [
-        exprsAtSide("rhs").modify(exprs => patchArray(exprs, index, [expr.operands[0]!], 1), sequent),
-        exprsAtSide("rhs").modify(exprs => patchArray(exprs, index, [expr.operands[1]!], 1), sequent),
+        exprsAtSide("rhs").modify(exprs => patchArray(exprs, index, [op.op1], 1), sequent),
+        exprsAtSide("rhs").modify(exprs => patchArray(exprs, index, [op.op2], 1), sequent),
       ];
-    } else if (expr?.me === "\\lor") {
+    } else if (op.kind === "disj") {
       // ∨R
-      return [exprsAtSide("rhs").modify(exprs => patchArray(exprs, index, expr.operands, 1), sequent)];
-    } else if (expr?.me === "\\to") {
+      return [exprsAtSide("rhs").modify(exprs => patchArray(exprs, index, [op.op1, op.op2], 1), sequent)];
+    } else if (op.kind === "imply") {
       // →R
       return [
-        exprsAtSide("rhs").modify(exprs => patchArray(exprs, index, [expr.operands[1]!], 1),
-          exprsAtSide("lhs").modify(exprs => exprs.concat([expr.operands[0]!]), sequent)),
+        exprsAtSide("lhs").modify(exprs => exprs.concat([op.op1]),
+          exprsAtSide("rhs").modify(exprs => patchArray(exprs, index, [op.op2], 1), sequent)),
       ];
-    } else if (expr?.me === "\\neg") {
+    } else if (op.kind === "neg") {
       // ¬R
       return [
         exprsAtSide("rhs").modify(exprs => patchArray(exprs, index, [], 1),
-          exprsAtSide("lhs").modify(exprs => exprs.concat([expr.operands[0]!]), sequent)),
+          exprsAtSide("lhs").modify(exprs => exprs.concat([op.op1]), sequent)),
       ];
     } else {
-      // expr is not a known operator; this should not happen.
-      // TODO take an additional parameter which is a discriminated union, instead of
-      // branching on expr.me itself?
-      throw `Unknown expr: ${expr?.me}`;
+      const n: never = op;
+      return n;
     }
   } else {
     const n: never = side;
@@ -139,10 +185,10 @@ export const SequentInfer = (props: SequentInferProps) => {
   // TODO implement actual behaviors
   const handleWhole = (index: number) => { console.log(index.toString() + " whole clicked!"); };
   const handleRoot = (index: number) => { console.log(index.toString() + " root clicked!"); };
-  const handleRootLhs = (focus: TreeFocus) => (index: number) => {
+  const handleRootLhs = (focus: TreeFocus) => (index: number, op: Operator) => {
     setTree(subtreeAtIndexes(focus.indexes).modify(
       subtree => {
-        const newSequents = doInfer(subtree.sequent, focus.side, index);
+        const newSequents = doInfer(subtree.sequent, focus.side, index, op);
         // Copy modified exprs to subtree.upper, instead of modifying subtree.sequent
         return ReductionTree.upper.replace(
           newSequents.map(s => ReductionTree.sequent.replace(s, subtree)),
