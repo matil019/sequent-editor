@@ -1,7 +1,7 @@
 import katex from 'katex';
 import React from 'react';
 import { useId } from 'react';
-import { Expr, ReductionTree, TreeFocus, exprsAtSide, exprToString, subtreeAtIndexes, theKatexOptions, treeToComponent } from './common';
+import { Expr, ReductionTree, Sequent, TreeFocus, exprsAtSide, exprToString, subtreeAtIndexes, theKatexOptions, treeToComponent } from './common';
 
 function renderClickableSequent(
   target: HTMLElement,
@@ -58,21 +58,28 @@ function patchArray<A>(arr: A[], start: number, newElems: A[], numReplace: numbe
   return arr.slice(0, start).concat(newElems).concat(arr.slice(start + numReplace));
 }
 
-function doInfer(exprs: Expr[], index: number): Expr[][] {
-  const expr = exprs[index];
-  // TODO use "Discriminated unions" to get rid of non-null assertions
-  // https://www.typescriptlang.org/docs/handbook/2/narrowing.html#discriminated-unions
-  if (expr?.me === "\\land") {
-    // ∧L
-    return [patchArray(exprs, index, expr.operands, 1)];
-  } else if (expr?.me === "\\lor") {
-    // ∨L
-    return [
-      patchArray(exprs, index, [expr.operands[0]!], 1),
-      patchArray(exprs, index, [expr.operands[1]!], 1),
-    ];
+function doInfer(sequent: Sequent, side: "lhs" | "rhs", index: number): Sequent[] {
+  if (side === "lhs") {
+    const expr = sequent.lhs[index];
+    // TODO use "Discriminated unions" to get rid of non-null assertions
+    // https://www.typescriptlang.org/docs/handbook/2/narrowing.html#discriminated-unions
+    if (expr?.me === "\\land") {
+      // ∧L
+      return [exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, expr.operands, 1), sequent)];
+    } else if (expr?.me === "\\lor") {
+      // ∨L
+      return [
+        exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, [expr.operands[0]!], 1), sequent),
+        exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, [expr.operands[1]!], 1), sequent),
+      ];
+    } else {
+      throw `Unknown expr: ${expr?.me}`;
+    }
+  } else if (side === "rhs") {
+    throw `RHS inference not yet implemented`;
   } else {
-    throw `Unknown expr: ${expr?.me}`;
+    const n: never = side;
+    return n;
   }
 }
 
@@ -86,13 +93,10 @@ export const SequentInfer = (props: SequentInferProps) => {
   const handleRootLhs = (focus: TreeFocus) => (index: number) => {
     setTree(subtreeAtIndexes(focus.indexes).modify(
       subtree => {
-        // TODO opticExprs should be a Lens not an Optional, this means
-        // ReductionTree.subtree and exprsAtSide should return Lens
-        const opticExprs = ReductionTree.sequent.compose(exprsAtSide(focus.side));
-        const newExprs = (() => doInfer(opticExprs.get(subtree)!, index))();
+        const newSequents = doInfer(subtree.sequent, focus.side, index);
         // Copy modified exprs to subtree.upper, instead of modifying subtree.sequent
         return ReductionTree.upper.replace(
-          newExprs.map(e => opticExprs.replace(e, subtree)),
+          newSequents.map(s => ReductionTree.sequent.replace(s, subtree)),
           subtree,
         );
       },
