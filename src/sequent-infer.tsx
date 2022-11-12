@@ -184,8 +184,7 @@ export const SequentInfer = (props: SequentInferProps) => {
 
   // TODO implement actual behaviors
   const handleWhole = (index: number) => { console.log(index.toString() + " whole clicked!"); };
-  const handleRoot = (index: number) => { console.log(index.toString() + " root clicked!"); };
-  const handleRootLhs = (focus: TreeFocus) => (index: number, op: Operator) => {
+  const handleRoot = (focus: TreeFocus) => (index: number, op: Operator) => {
     setTree(subtreeAtIndexes(focus.indexes).modify(
       subtree => {
         const newSequents = doInfer(subtree.sequent, focus.side, index, op);
@@ -205,9 +204,9 @@ export const SequentInfer = (props: SequentInferProps) => {
     const leafId = indexes.reduce((acc, x) => acc + "-" + x.toString(), id);
     return (
       <div className="katex-container">
-        <span ref={me => { me && renderClickableSequent(me, lhs, leafId + "lhs", handleWhole, handleRootLhs({indexes, side: "lhs"})); }} />
+        <span ref={me => { me && renderClickableSequent(me, lhs, leafId + "lhs", handleWhole, handleRoot({indexes, side: "lhs"})); }} />
         <span ref={me => { me && katex.render("\\; \\vdash \\;", me, theKatexOptions); }} />
-        <span ref={me => { me && renderClickableSequent(me, rhs, leafId + "rhs", handleWhole, handleRoot); }} />
+        <span ref={me => { me && renderClickableSequent(me, rhs, leafId + "rhs", handleWhole, handleRoot({indexes, side: "rhs"})); }} />
       </div>
     );
   });
