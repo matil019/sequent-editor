@@ -31,19 +31,20 @@ function paren(s: string): string {
 
 export function exprToString(expr: Expr): string {
   // We assume that `expr.operands.length` is correct i.e. for "\\land", it's 2, for "A", it's 0, etc.
+  // TODO rewrite this function with destructrings instead of non-null assertions
   const n = expr.operands.length;
   if (n === 0) {
     return expr.me;
   } else if (n === 1) {
-    const op0 = expr.operands[0];
+    const op0 = expr.operands[0]!;
     const sop0 = exprToString(op0);
     return expr.me + " " + (op0.precedence < expr.precedence ? paren(sop0) : sop0);
   } else {
     // we assume n === 2 i.e. `expr` is an infix operator
     // we also assume that the fixity is correct i.e. if the precedences are the same, left- and right- associativities don't mix
-    const op0 = expr.operands[0];
+    const op0 = expr.operands[0]!;
     const sop0 = exprToString(op0);
-    const op1 = expr.operands[1];
+    const op1 = expr.operands[1]!;
     const sop1 = exprToString(op1);
     return ((op0.precedence < expr.precedence || op0.precedence === expr.precedence && op0.associative === "right") ? paren(sop0) : sop0)
       + " " + expr.me + " "

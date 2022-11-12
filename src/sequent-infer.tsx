@@ -61,17 +61,17 @@ function patchArray<A>(arr: A[], start: number, newElems: A[], numReplace: numbe
 function doInfer(exprs: Expr[], index: number): Expr[][] {
   const expr = exprs[index];
   // TODO should `Expr.me` be a union?
-  if (expr.me === "\\land") {
+  if (expr?.me === "\\land") {
     // ∧L
     return [patchArray(exprs, index, expr.operands, 1)];
-  } else if (expr.me === "\\lor") {
+  } else if (expr?.me === "\\lor") {
     // ∨L
     return [
-      patchArray(exprs, index, [expr.operands[0]], 1),
-      patchArray(exprs, index, [expr.operands[1]], 1),
+      patchArray(exprs, index, [expr.operands[0]!], 1),
+      patchArray(exprs, index, [expr.operands[1]!], 1),
     ];
   } else {
-    throw `Unknown expr: ${expr.me}`;
+    throw `Unknown expr: ${expr?.me}`;
   }
 }
 
