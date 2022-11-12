@@ -60,10 +60,15 @@ function patchArray<A>(arr: A[], start: number, newElems: A[], numReplace: numbe
 }
 
 function doInfer(sequent: Sequent, side: "lhs" | "rhs", index: number): Sequent[] {
+  // TODO use "Discriminated unions" to get rid of non-null assertions
+  // https://www.typescriptlang.org/docs/handbook/2/narrowing.html#discriminated-unions
+
+  // Since we don't know how to distribute unrelated exprs, we copy all of them to the upper
+  // sequents. This makes the program incompatible with intuitionistic logic because one of the
+  // RHS gets two exprs.
+  // As a workaround, the user can apply WL/WR immediately.
   if (side === "lhs") {
     const expr = sequent.lhs[index];
-    // TODO use "Discriminated unions" to get rid of non-null assertions
-    // https://www.typescriptlang.org/docs/handbook/2/narrowing.html#discriminated-unions
     if (expr?.me === "\\land") {
       // ∧L
       return [exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, expr.operands, 1), sequent)];
@@ -75,9 +80,6 @@ function doInfer(sequent: Sequent, side: "lhs" | "rhs", index: number): Sequent[
       ];
     } else if (expr?.me === "\\to") {
       // →L
-      // Since we don't know how to distribute unrelated exprs, we copy all of them to the upper
-      // sequents. This makes the program incompatible with intuitionistic logic because one of the
-      // RHS gets two exprs. As a workaround, the user can apply WR immediately.
       const sequent1 = exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, [], 1), sequent);
       return [
         exprsAtSide("rhs").modify(exprs => [expr.operands[0]!].concat(exprs), sequent1),
@@ -85,16 +87,45 @@ function doInfer(sequent: Sequent, side: "lhs" | "rhs", index: number): Sequent[
       ];
     } else if (expr?.me === "\\neg") {
       // ¬L
-      // This keeps the RHS, making it incompatible with intuitionistic logic.
       return [
         exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, [], 1),
           exprsAtSide("rhs").modify(exprs => [expr.operands[0]!].concat(exprs), sequent)),
       ];
     } else {
+      // expr is not a known operator; this should not happen.
+      // TODO take an additional parameter which is a discriminated union, instead of
+      // branching on expr.me itself?
       throw `Unknown expr: ${expr?.me}`;
     }
   } else if (side === "rhs") {
-    throw `RHS inference not yet implemented`;
+    const expr = sequent.rhs[index];
+    if (expr?.me === "\\land") {
+      // ∧R
+      return [
+        exprsAtSide("rhs").modify(exprs => patchArray(exprs, index, [expr.operands[0]!], 1), sequent),
+        exprsAtSide("rhs").modify(exprs => patchArray(exprs, index, [expr.operands[1]!], 1), sequent),
+      ];
+    } else if (expr?.me === "\\lor") {
+      // ∨R
+      return [exprsAtSide("rhs").modify(exprs => patchArray(exprs, index, expr.operands, 1), sequent)];
+    } else if (expr?.me === "\\to") {
+      // →R
+      return [
+        exprsAtSide("rhs").modify(exprs => patchArray(exprs, index, [expr.operands[1]!], 1),
+          exprsAtSide("lhs").modify(exprs => exprs.concat([expr.operands[0]!]), sequent)),
+      ];
+    } else if (expr?.me === "\\neg") {
+      // ¬R
+      return [
+        exprsAtSide("rhs").modify(exprs => patchArray(exprs, index, [], 1),
+          exprsAtSide("lhs").modify(exprs => exprs.concat([expr.operands[0]!]), sequent)),
+      ];
+    } else {
+      // expr is not a known operator; this should not happen.
+      // TODO take an additional parameter which is a discriminated union, instead of
+      // branching on expr.me itself?
+      throw `Unknown expr: ${expr?.me}`;
+    }
   } else {
     const n: never = side;
     return n;
