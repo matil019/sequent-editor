@@ -58,6 +58,23 @@ function patchArray<A>(arr: A[], start: number, newElems: A[], numReplace: numbe
   return arr.slice(0, start).concat(newElems).concat(arr.slice(start + numReplace));
 }
 
+function doInfer(exprs: Expr[], index: number): Expr[][] {
+  const expr = exprs[index];
+  // TODO should `Expr.me` be a union?
+  if (expr.me === "\\land") {
+    // ∧L
+    return [patchArray(exprs, index, expr.operands, 1)];
+  } else if (expr.me === "\\lor") {
+    // ∨L
+    return [
+      patchArray(exprs, index, [expr.operands[0]], 1),
+      patchArray(exprs, index, [expr.operands[1]], 1),
+    ];
+  } else {
+    throw `Unknown expr: ${expr.me}`;
+  }
+}
+
 export const SequentInfer = (props: SequentInferProps) => {
   const {tree, setTree} = props;
   const id = useId();
@@ -71,23 +88,7 @@ export const SequentInfer = (props: SequentInferProps) => {
         // TODO opticExprs should be a Lens not an Optional, this means
         // ReductionTree.subtree and exprsAtSide should return Lens
         const opticExprs = ReductionTree.sequent.compose(exprsAtSide(focus.side));
-        const newExprs = (() => {
-          const exprs = opticExprs.get(subtree)!;
-          const expr = exprs[index];
-          // TODO should `Expr.me` be a union?
-          if (expr?.me === "\\land") {
-            // ∧L
-            return [patchArray(exprs, index, expr.operands, 1)];
-          } else if (expr?.me === "\\lor") {
-            // ∨L
-            return [
-              patchArray(exprs, index, [expr.operands[0]], 1),
-              patchArray(exprs, index, [expr.operands[1]], 1),
-            ];
-          } else {
-            throw `Unknown expr: ${expr?.me}`;
-          }
-        })();
+        const newExprs = (() => doInfer(opticExprs.get(subtree)!, index))();
         // Copy modified exprs to subtree.upper, instead of modifying subtree.sequent
         return ReductionTree.upper.replace(
           newExprs.map(e => opticExprs.replace(e, subtree)),
