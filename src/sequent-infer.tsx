@@ -83,6 +83,13 @@ function doInfer(sequent: Sequent, side: "lhs" | "rhs", index: number): Sequent[
         exprsAtSide("rhs").modify(exprs => [expr.operands[0]!].concat(exprs), sequent1),
         exprsAtSide("lhs").modify(exprs => exprs.concat([expr.operands[1]!]), sequent1),
       ];
+    } else if (expr?.me === "\\neg") {
+      // ¬L
+      // This keeps the RHS, making it incompatible with intuitionistic logic.
+      return [
+        exprsAtSide("lhs").modify(exprs => patchArray(exprs, index, [], 1),
+          exprsAtSide("rhs").modify(exprs => [expr.operands[0]!].concat(exprs), sequent)),
+      ];
     } else {
       throw `Unknown expr: ${expr?.me}`;
     }
