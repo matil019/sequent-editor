@@ -1,7 +1,7 @@
 import katex from 'katex';
 import React from 'react';
 import { useId } from 'react';
-import { Expr, ReductionTree, TreeFocus, appliedLensOf, appliedLensOfSubtree, exprToString, theKatexOptions, treeToComponent } from './common';
+import { Expr, ReductionTree, TreeFocus, exprsAtSide, exprToString, subtreeAtIndexes, theKatexOptions, treeToComponent } from './common';
 
 function renderClickableSequent(
   target: HTMLElement,
@@ -66,34 +66,36 @@ export const SequentInfer = (props: SequentInferProps) => {
   const handleWhole = (index: number) => { console.log(index.toString() + " whole clicked!"); };
   const handleRoot = (index: number) => { console.log(index.toString() + " root clicked!"); };
   const handleRootLhs = (focus: TreeFocus) => (index: number) => {
-    const [subtree, replaceSubtree] = appliedLensOfSubtree(tree, focus.indexes);
-    if (subtree) {
-      // Here, it is assumed that `focus` points to a leaf of `ReductionTree`
-      const [exprs, replaceExprs] = appliedLensOf(subtree, {...focus, indexes: []});
-      if (exprs) {
-        const expr = exprs[index];
-        // TODO should `expr.me` be a union?
-        if (expr.me === "\\land") {
-          // ∧L
-          // Add an upper sequent, instead of modifying this sequent
-          setTree(replaceSubtree({
-            ...subtree,
-            upper: [replaceExprs(patchArray(exprs, index, expr.operands, 1))],
-          }));
-        } else if (expr.me === "\\lor") {
-          // ∨L
-          setTree(replaceSubtree({
-            ...subtree,
-            upper: [
-              replaceExprs(patchArray(exprs, index, [expr.operands[0]], 1)),
-              replaceExprs(patchArray(exprs, index, [expr.operands[1]], 1)),
-            ],
-          }));
-        } else {
-          throw `Unknown expr: ${expr.me}`;
-        }
-      }
-    }
+    setTree(subtreeAtIndexes(focus.indexes).modify(
+      subtree => {
+        // TODO opticExprs should be a Lens not an Optional, this means
+        // ReductionTree.subtree and exprsAtSide should return Lens
+        const opticExprs = ReductionTree.sequent.compose(exprsAtSide(focus.side));
+        const newExprs = (() => {
+          const exprs = opticExprs.get(subtree)!;
+          const expr = exprs[index];
+          // TODO should `Expr.me` be a union?
+          if (expr?.me === "\\land") {
+            // ∧L
+            return [patchArray(exprs, index, expr.operands, 1)];
+          } else if (expr?.me === "\\lor") {
+            // ∨L
+            return [
+              patchArray(exprs, index, [expr.operands[0]], 1),
+              patchArray(exprs, index, [expr.operands[1]], 1),
+            ];
+          } else {
+            throw `Unknown expr: ${expr?.me}`;
+          }
+        })();
+        // Copy modified exprs to subtree.upper, instead of modifying subtree.sequent
+        return ReductionTree.upper.replace(
+          newExprs.map(e => opticExprs.replace(e, subtree)),
+          subtree,
+        );
+      },
+      tree,
+    ));
   };
 
   return treeToComponent(tree, (leaf: ReductionTree, indexes: number[]) => {

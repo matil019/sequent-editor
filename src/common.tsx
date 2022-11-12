@@ -2,6 +2,8 @@ import katex from 'katex';
 import { KatexOptions } from 'katex';
 import React from 'react';
 
+import Optional from './optional';
+
 export const theKatexOptions: KatexOptions = {
   throwOnError: false,
   trust: (context) => context.command === '\\htmlId',
@@ -63,79 +65,41 @@ export type Sequent = {lhs: Expr[], rhs: Expr[]}
 
 export type ReductionTree = { sequent: Sequent, upper: ReductionTree[] }
 
+export const ReductionTree = {
+  sequent: new Optional<ReductionTree, Sequent>(x => x.sequent, (sequent, x) => ({...x, sequent})),
+  upper: new Optional<ReductionTree, ReductionTree[]>(x => x.upper, (upper, x) => ({...x, upper})),
+};
+
 // `indexes == []` means the root node (sequent) is focused
 export type TreeFocus = {indexes: number[], side: "lhs" | "rhs"}
 
-// A poor-man's lens which is already applied to its focus.
-//
-// *Note* this is technically an `AppliedOptional` because it may points to nothing (`emptyAppliedLens`).
-export type AppliedLens<S, A> = [A | null, (b: A) => S]
-
-// An applied lens that points to nothing
-export function emptyAppliedLens<S, A>(s: S): AppliedLens<S, A> {
-  return [null, (_) => s];
+export function sequentAtIndexes(indexes: number[]): Optional<ReductionTree, Sequent> {
+  return subtreeAtIndexes(indexes).compose(ReductionTree.sequent);
 }
 
-export function appliedLensOfSequent(
-  tree: ReductionTree,
-  indexes: number[],
-): AppliedLens<ReductionTree, Sequent> {
-  const [subtree, replaceSubtree] = appliedLensOfSubtree(tree, indexes);
-  if (subtree) {
-    return [subtree.sequent, (sequent) => replaceSubtree({...subtree, sequent})];
-  } else {
-    return emptyAppliedLens(tree);
-  }
-}
-
-// Like `appliedLensOfSequent`, but returns a sub-`ReductionTree` instead of its `Sequent`.
-export function appliedLensOfSubtree(
-  tree: ReductionTree,
-  indexes: number[],
-): AppliedLens<ReductionTree, ReductionTree> {
+export function subtreeAtIndexes(indexes: number[]): Optional<ReductionTree, ReductionTree> {
   const [index] = indexes;
-  if (index != null) {
-    const up = tree.upper[index];
-    if (up) {
-      const [getter, subSetter] = appliedLensOfSubtree(up, indexes.slice(1));
-      const setter = (subtree: ReductionTree) => ({
-        ...tree,
-        upper: tree.upper.slice(0, index).concat([subSetter(subtree)]).concat(tree.upper.slice(index + 1)),
-      });
-      return [getter, setter];
-    } else {
-      return emptyAppliedLens(tree);
-    }
+  if (index == null) {
+    // point to self
+    return new Optional(x => x, (y, _) => y);
   } else {
-    return [tree, (subtree) => subtree];
+    return ReductionTree.upper.compose(Optional.index(index)).compose(subtreeAtIndexes(indexes.slice(1)));
   }
 }
 
-export function appliedLensOfExprs(
-  sequent: Sequent,
-  side: "lhs" | "rhs",
-): AppliedLens<Sequent, Expr[]> {
+export function exprsAtSide(side: "lhs" | "rhs"): Optional<Sequent, Expr[]> {
   if (side === "lhs") {
-    return [sequent.lhs, (es) => ({...sequent, lhs: es})];
+    return new Optional(x => x.lhs, (lhs, x) => ({...x, lhs}));
   } else if (side === "rhs") {
-    return [sequent.rhs, (es) => ({...sequent, rhs: es})];
+    return new Optional(x => x.rhs, (rhs, x) => ({...x, rhs}));
   } else {
     const n: never = side;
     return n;
   }
 }
 
-export function appliedLensOf(
-  tree: ReductionTree,
-  focus: TreeFocus,
-): AppliedLens<ReductionTree, Expr[]> {
-  const [sequent, replaceSequent] = appliedLensOfSequent(tree, focus.indexes);
-  if (sequent) {
-    const [exprs, replaceExprs] = appliedLensOfExprs(sequent, focus.side);
-    return [exprs, (es) => replaceSequent(replaceExprs(es))];
-  } else {
-    return emptyAppliedLens(tree);
-  }
+export function exprsAtFocus(focus: TreeFocus): Optional<ReductionTree, Expr[]> {
+  return sequentAtIndexes(focus.indexes).compose(exprsAtSide(focus.side));
 }
 
 export function treeToComponent(tree: ReductionTree, leafToComponent: (leaf: ReductionTree, indexes: number[]) => JSX.Element): JSX.Element {
