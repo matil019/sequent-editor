@@ -2,7 +2,7 @@ import katex from 'katex';
 import React from 'react';
 import { useState } from 'react';
 
-import { AppliedLens, Expr, ReductionTree, TreeFocus, appliedLensOf, emptyAppliedLens, exprsToString, theKatexOptions, treeToComponent } from './common';
+import { Expr, ReductionTree, TreeFocus, exprsAtFocus, exprsToString, theKatexOptions, treeToComponent } from './common';
 
 const buttonSpecs: {label: string, onClick: (es: Expr[]) => Expr[]}[] = [
   { label: "A", onClick: (es) => (es.concat([{me: "A", precedence: "atom", associative: "none", operands: []}])) },
@@ -62,9 +62,6 @@ export const SequentInput = (props: SequentInputProps) => {
   // TODO reset focus when the tree structure has changed (e.g. a new sequent is added in the infer mode)
   const [focus, setFocus] = useState(null as TreeFocus | null);
 
-  const [focusedExprs, replaceFocusedExprs]: AppliedLens<ReductionTree, Expr[]> =
-    focus ? appliedLensOf(tree, focus) : emptyAppliedLens(tree);
-
   const sequentDisplay = treeToComponent(tree, (leaf: ReductionTree, indexes: number[]) => {
     // only leaf nodes should be able to have focus
     const katexRender = (es: Expr[], me: HTMLElement) => katex.render(es.length > 0 ? exprsToString(es) : "\\quad", me, theKatexOptions);
@@ -96,21 +93,22 @@ export const SequentInput = (props: SequentInputProps) => {
           key={buttonSpec.label}
           ref={me => { me && katex.render(buttonSpec.label, me, theKatexOptions); }}
           onClick={() => {
-            const exprs = focusedExprs;
-            if (exprs) {
-              setTree(replaceFocusedExprs(buttonSpec.onClick(exprs)));
+            if (focus != null) {
+              setTree(exprsAtFocus(focus).modify(exprs => buttonSpec.onClick(exprs), tree));
             }
           }}
           >
         </button>
       ))}
       <button onClick={() => {
-        const exprs = focusedExprs;
-        if (exprs) {
-          const [e] = exprs.slice(-1);
-          if (e) {
-            setTree(replaceFocusedExprs(exprs.slice(0, -1).concat(e.operands)));
-          }
+        if (focus != null) {
+          setTree(exprsAtFocus(focus).modify(
+            exprs => {
+              const [e] = exprs.slice(-1);
+              return (e == null) ? exprs : exprs.slice(0, -1).concat(e.operands);
+            },
+            tree,
+          ));
         }
       }}>
         undo

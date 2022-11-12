@@ -14,6 +14,15 @@ class Optional<S, A> {
     );
   }
 
+  modify(f: (a: A) => A, s: S): S {
+    const a = this.get(s);
+    if (a == null) {
+      return s;
+    } else {
+      return this.replace(f(a), s);
+    }
+  }
+
   static empty<S, A>(): Optional<S, A> {
     return new Optional<S, A>(_ => null, (_, s) => s);
   }
