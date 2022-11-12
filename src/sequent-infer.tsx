@@ -49,11 +49,6 @@ function renderClickableSequent(
   }
 }
 
-export type SequentInferProps = {
-  tree: ReductionTree,
-  setTree: (tree: ReductionTree) => void,
-}
-
 // Inspired by Seq#patch from Scala
 function patchArray<A>(arr: A[], start: number, newElems: A[], numReplace: number): A[] {
   return arr.slice(0, start).concat(newElems).concat(arr.slice(start + numReplace));
@@ -130,6 +125,11 @@ function doInfer(sequent: Sequent, side: "lhs" | "rhs", index: number): Sequent[
     const n: never = side;
     return n;
   }
+}
+
+export type SequentInferProps = {
+  tree: ReductionTree,
+  setTree: (tree: ReductionTree) => void,
 }
 
 export const SequentInfer = (props: SequentInferProps) => {
